@@ -10,20 +10,10 @@ from config.settings import (
     FRAME_CONTENT_X,
     FRAME_CONTENT_Y,
     FRAME_SOURCE,
-    HEADER_SOURCE,
     LAYOUT_BOTTOM_PAD,
-    LAYOUT_CROWN_HEIGHT,
     LAYOUT_FILE_LABEL_H,
-    LAYOUT_FRAME_WIDTH,
-    LAYOUT_HEADER_STATUS_GAP,
-    LAYOUT_HEADER_WIDTH,
-    LAYOUT_RANK_GUTTER,
-    LAYOUT_SIDE_PAD,
-    LAYOUT_TOP_PAD,
-    LAYOUT_TURN_H,
     RELIC_BAR_PAD,
     RELIC_CARD_HEIGHT,
-    STATUS_SOURCE,
     WINDOW_HEIGHT,
 )
 
@@ -39,6 +29,14 @@ class Layout:
     crown: pygame.Rect
     turn: pygame.Rect
     relics: pygame.Rect
+    left: pygame.Rect
+    center: pygame.Rect
+    right: pygame.Rect
+    reset: pygame.Rect
+    start: pygame.Rect
+    deploy: pygame.Rect
+    menu: pygame.Rect
+    options: pygame.Rect
 
     def square_rect(self, col: int, row: int) -> pygame.Rect:
         screen_row = BOARD_SIZE - row
@@ -63,71 +61,103 @@ def _board_inside(frame: pygame.Rect) -> tuple[pygame.Rect, int]:
     return board, square
 
 
-def layout_for_status_width(window_w: int, window_h: int, status_w: int) -> Layout:
-    status_h = max(1, int(round(status_w * STATUS_SOURCE[1] / STATUS_SOURCE[0])))
-    header_w = max(1, int(round(status_w * LAYOUT_HEADER_WIDTH)))
-    header_h = max(1, int(round(header_w * HEADER_SOURCE[1] / HEADER_SOURCE[0])))
-    frame_size = max(1, int(round(status_w * LAYOUT_FRAME_WIDTH)))
-    crown_h = max(1, int(round(header_h * LAYOUT_CROWN_HEIGHT)))
-    crown_w = max(1, int(round(crown_h * CROWN_SOURCE[0] / CROWN_SOURCE[1])))
-    block_w = max(status_w, header_w, frame_size, crown_w)
-    origin_x = max(LAYOUT_RANK_GUTTER, (window_w - block_w) // 2)
-    header_y = LAYOUT_TOP_PAD + max(0, crown_h - header_h)
-    header = pygame.Rect(origin_x + (block_w - header_w) // 2, header_y, header_w, header_h)
-    status = pygame.Rect(
-        origin_x + (block_w - status_w) // 2,
-        header.bottom + LAYOUT_HEADER_STATUS_GAP,
-        status_w,
-        status_h,
-    )
-    frame_x = origin_x + (block_w - frame_size) // 2
-    band_h = _relic_band_height(window_h)
-    relics = pygame.Rect(frame_x, status.bottom + 4, frame_size, band_h)
-    frame = pygame.Rect(frame_x, relics.bottom + 6, frame_size, frame_size)
-    crown = pygame.Rect(0, 0, crown_w, crown_h)
-    crown.midbottom = (header.centerx, header.bottom)
-    board, square = _board_inside(frame)
-    turn = pygame.Rect(0, frame.bottom + LAYOUT_FILE_LABEL_H, window_w, LAYOUT_TURN_H)
-    return Layout((window_w, window_h), header, status, frame, board, square, crown, turn, relics)
-
-
 def _relic_band_height(window_h: int) -> int:
     scale = window_h / WINDOW_HEIGHT
     card_h = max(64, min(RELIC_CARD_HEIGHT, int(round(RELIC_CARD_HEIGHT * scale))))
     return card_h + RELIC_BAR_PAD
 
 
-def layout_fits(layout: Layout, window_w: int, window_h: int) -> bool:
-    if layout.crown.top < 4:
-        return False
-    if layout.crown.left < 4 or layout.crown.right > window_w - 4:
-        return False
-    if layout.frame.left < LAYOUT_RANK_GUTTER or layout.frame.right > window_w - LAYOUT_SIDE_PAD:
-        return False
-    if layout.turn.bottom > window_h - LAYOUT_BOTTOM_PAD:
-        return False
-    if layout.square < 8:
-        return False
-    return True
+def _columns(window_w: int, window_h: int) -> tuple[pygame.Rect, pygame.Rect, pygame.Rect]:
+    outer = 12
+    side_w = max(168, int(round(window_w * 0.25)) - outer)
+    side_w = min(side_w, max(168, int(window_w * 0.28)))
+    left = pygame.Rect(outer, outer, side_w, max(1, window_h - outer * 2))
+    right = pygame.Rect(window_w - outer - side_w, outer, side_w, left.h)
+    gap = 10
+    center = pygame.Rect(left.right + gap, outer, max(1, right.left - gap - (left.right + gap)), left.h)
+    return left, center, right
+
+
+def _menu_buttons(left: pygame.Rect) -> tuple[pygame.Rect, pygame.Rect]:
+    height = 40
+    gap = 8
+    inset = 14
+    options = pygame.Rect(left.x + inset, left.bottom - inset - height, max(1, left.w - inset * 2), height)
+    menu = pygame.Rect(options.x, options.y - gap - height, options.w, height)
+    return menu, options
 
 
 def build_layout(window_w: int, window_h: int) -> Layout:
-    low = 240
-    high = max(240, window_w)
-    best = low
-    while low <= high:
-        mid = (low + high) // 2
-        candidate = layout_for_status_width(window_w, window_h, mid)
-        if layout_fits(candidate, window_w, window_h):
-            best = mid
-            low = mid + 1
-        else:
-            high = mid - 1
-    return layout_for_status_width(window_w, window_h, best)
+    window_w = max(1, int(window_w))
+    window_h = max(1, int(window_h))
+    left, center, right = _columns(window_w, window_h)
+    menu, options = _menu_buttons(left)
+    crown_h = min(72, max(36, int(center.h * 0.08)))
+    crown_w = max(1, int(round(crown_h * CROWN_SOURCE[0] / CROWN_SOURCE[1])))
+    relic_h = _relic_band_height(window_h)
+    label_h = LAYOUT_FILE_LABEL_H
+    action_h = 42
+    rank_gutter = 28
+
+    def place(relic_height: int, crown_height: int) -> pygame.Rect:
+        top = crown_height + 6 + relic_height + 8
+        bottom_reserve = label_h + 8 + action_h + 8
+        avail_h = center.h - top - bottom_reserve
+        avail_w = center.w - rank_gutter - 8
+        side = max(1, min(avail_w, avail_h))
+        frame = pygame.Rect(0, 0, side, side)
+        inner_left = center.left + rank_gutter
+        inner_w = max(1, center.right - 8 - inner_left)
+        frame.x = inner_left + max(0, (inner_w - side) // 2)
+        frame.y = center.top + top
+        return frame
+
+    frame = place(relic_h, crown_h)
+    _board, square = _board_inside(frame)
+    action_top = frame.bottom + label_h + 6
+    if square < 40 or action_top + action_h > window_h - LAYOUT_BOTTOM_PAD:
+        relic_h = max(78, relic_h - 20)
+        crown_h = max(36, crown_h - 12)
+        crown_w = max(1, int(round(crown_h * CROWN_SOURCE[0] / CROWN_SOURCE[1])))
+        frame = place(relic_h, crown_h)
+    board, square = _board_inside(frame)
+    relics = pygame.Rect(frame.x, frame.y - 8 - relic_h, frame.w, relic_h)
+    crown = pygame.Rect(0, 0, crown_w, crown_h)
+    crown.centerx = min(max(frame.centerx, center.left + crown_w // 2), center.right - crown_w // 2)
+    crown.bottom = max(crown_h + 4, relics.top - 2)
+    start = pygame.Rect(0, 0, min(260, max(160, frame.w // 2)), action_h)
+    start.midtop = (frame.centerx, frame.bottom + label_h + 6)
+    reset = pygame.Rect(0, 0, 0, 0)
+    deploy = start.copy()
+    turn = pygame.Rect(frame.x, start.y, frame.w, action_h)
+    header = pygame.Rect(frame.x, crown.y, frame.w, max(1, relics.y - crown.y))
+    status = pygame.Rect(frame.x, relics.y, frame.w, max(1, relics.h))
+    return Layout(
+        (window_w, window_h),
+        header,
+        status,
+        frame,
+        board,
+        square,
+        crown,
+        turn,
+        relics,
+        left,
+        center,
+        right,
+        reset,
+        start,
+        deploy,
+        menu,
+        options,
+    )
 
 
 def square_at(layout: Layout, pos: tuple[int, int]) -> tuple[int, int] | None:
     x, y = pos
+    for blocker in (layout.left, layout.right, layout.menu, layout.options, layout.start, layout.reset, layout.deploy):
+        if blocker.collidepoint(x, y):
+            return None
     if not layout.board.collidepoint(x, y):
         return None
     col = (x - layout.board.x) // layout.square

@@ -1,17 +1,41 @@
+from pathlib import Path
+
 import pygame
 
 from game.relics.relic_data import RelicDef
 from rendering.asset_manager import AssetManager
-from rendering.hud_renderer import _blit_text, get_font
+from rendering.relic_art import artwork
 
 
-PARCHMENT = (236, 220, 196)
-PARCHMENT_EDGE = (92, 64, 42)
-INK = (48, 32, 24)
-FLAVOR = (96, 58, 42)
-RULE = (120, 84, 58)
+INK = (32, 20, 12)
+CARD_RATIO = 2 / 3
+TITLE_Y = 0.10
+ART_TOP = 0.15
+ART_BOTTOM = 0.73
+FLAVOUR_Y = 0.79
+EFFECT_Y = 0.88
+TEXT_MARGIN = 0.09
+ART_MARGIN_X = 0.09
+READABLE_CARD_HEIGHT = 420
 
-_SMALL_FONTS: dict[tuple[int, bool], pygame.font.Font] = {}
+_KEYWORDS = (
+    "SPECIAL PIECE",
+    "NORMAL PIECE",
+    "SHOP REROLL",
+    "ARMY SIZE",
+    "EXPLOSIVE",
+    "BISHOP",
+    "KNIGHT",
+    "QUEEN",
+    "ROOK",
+    "KING",
+    "PAWN",
+    "GHOST",
+    "GOLD",
+)
+
+_FONT_PATHS: dict[bool, str | None] = {}
+_FONTS: dict[tuple[int, bool], pygame.font.Font] = {}
 
 
 def wrap_text(font: pygame.font.Font, text: str, width: int) -> list[str]:
@@ -31,45 +55,49 @@ def wrap_text(font: pygame.font.Font, text: str, width: int) -> list[str]:
     return lines
 
 
-def _card_font(size: int, bold: bool) -> pygame.font.Font:
-    size = max(8, int(size))
-    if size >= 10:
-        return get_font(size, bold=bold)
+def _font_path(bold: bool) -> str | None:
+    if bold in _FONT_PATHS:
+        return _FONT_PATHS[bold]
+    found = _bundled_font(bold)
+    if found is None:
+        for name in ("palatinolinotype", "palatino linotype", "palatino", "garamond", "georgia"):
+            found = pygame.font.match_font(name, bold=bold)
+            if found:
+                break
+    if found is None and bold:
+        found = _font_path(False)
+    _FONT_PATHS[bold] = found
+    return found
+
+
+def _bundled_font(bold: bool) -> str | None:
+    folder = Path(__file__).resolve().parents[1] / "assets" / "fonts"
+    names = ("card_bold.otf", "card_bold.ttf", "card.otf", "card.ttf") if bold else ("card.otf", "card.ttf")
+    for name in names:
+        path = folder / name
+        if path.exists():
+            return str(path)
+    return _bundled_font(False) if bold else None
+
+
+def _serif(size: int, bold: bool = False) -> pygame.font.Font:
+    size = max(7, int(size))
     key = (size, bold)
-    font = _SMALL_FONTS.get(key)
+    font = _FONTS.get(key)
     if font is None:
-        font = pygame.font.SysFont("georgia", size, bold=bold)
-        _SMALL_FONTS[key] = font
+        path = _font_path(bold)
+        font = pygame.font.Font(path, size) if path else pygame.font.SysFont("georgia", size, bold=bold)
+        _FONTS[key] = font
     return font
-
-
-def _fit_lines(text: str, width: int, height: int, size: int, bold: bool) -> tuple[pygame.font.Font, list[str]]:
-    styles = (bold, False) if bold else (False,)
-    for style in styles:
-        for current in range(max(8, size), 7, -1):
-            font = _card_font(current, style)
-            lines = wrap_text(font, text, width)
-            widest = max((font.size(line)[0] for line in lines), default=0)
-            if widest <= width and font.get_height() * max(1, len(lines)) <= height:
-                return font, lines
-    font = _card_font(8, False)
-    lines = wrap_text(font, text, width)
-    fitted: list[str] = []
-    for line in lines:
-        trimmed = line
-        while trimmed and font.size(trimmed + "...")[0] > width:
-            trimmed = trimmed[:-1]
-        fitted.append(trimmed + "..." if trimmed != line else line)
-    max_lines = max(1, height // max(1, font.get_height()))
-    return font, fitted[:max_lines]
 
 
 class RelicCardRenderer:
     def __init__(self) -> None:
-        self._mini: dict[tuple, pygame.Surface] = {}
+        self._faces: dict[tuple, pygame.Surface] = {}
 
     def clear(self) -> None:
-        self._mini.clear()
+        self._faces.clear()
+        artwork.clear()
 
     def mini_surface(
         self,
@@ -82,7 +110,7 @@ class RelicCardRenderer:
         width = max(1, int(width))
         height = max(1, int(height))
         key = (relic.id, width, height, state)
-        cached = self._mini.get(key)
+        cached = self._faces.get(key)
         if cached is not None:
             return cached
         surface = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -92,102 +120,265 @@ class RelicCardRenderer:
         elif state == "used":
             _darken(surface)
             _draw_check(surface)
-        self._mini[key] = surface
+        self._faces[key] = surface
         return surface
 
     def draw(
         self,
         screen: pygame.Surface,
         assets: AssetManager,
-        relic: RelicDef,
+        relic: RelicDef | None,
         rect: pygame.Rect,
         hovered: bool = False,
         owned: bool = False,
+        face_down: bool = False,
+        selected: bool = False,
+        progress: float | None = None,
     ) -> None:
-        if assets.has("relic_card"):
-            screen.blit(assets.scaled("relic_card", (rect.w, rect.h)), rect.topleft)
+        del hovered, owned, selected
+        card = _portrait_rect(rect)
+        if face_down or relic is None:
+            image = self._surface(assets, None, card.w, card.h, True)
         else:
-            pygame.draw.rect(screen, PARCHMENT, rect, border_radius=max(8, rect.w // 18))
-        border = (214, 170, 90) if hovered or owned else PARCHMENT_EDGE
-        width = 3 if hovered else 2
-        pygame.draw.rect(screen, border, rect, width=width, border_radius=max(8, rect.w // 18))
-        if rect.h >= 200:
-            pygame.draw.rect(screen, (28, 18, 12), rect.inflate(6, 6), width=2, border_radius=16)
-        if rect.h < 200:
-            self._draw_compact(screen, assets, relic, rect)
-            return
-        pad = max(8, rect.w // 14)
-        inner = rect.inflate(-pad * 2, -pad * 2)
-        name_h = max(22, int(rect.h * 0.12))
-        body_h = max(28, int(rect.h * 0.22))
-        flavor_h = max(18, int(rect.h * 0.12))
-        name_rect = pygame.Rect(inner.x, inner.y, inner.w, name_h)
-        art_rect = pygame.Rect(inner.x, name_rect.bottom + 4, inner.w, max(12, inner.h - name_h - flavor_h - body_h - 16))
-        flavor_rect = pygame.Rect(inner.x, art_rect.bottom + 4, inner.w, flavor_h)
-        body_rect = pygame.Rect(inner.x, flavor_rect.bottom + 2, inner.w, body_h)
-        self._draw_art(screen, assets, relic, art_rect)
-        name_font, name_lines = _fit_lines(relic.name.upper(), name_rect.w, name_rect.h, max(13, rect.h // 16), True)
-        self._draw_lines(screen, name_lines, name_font, INK, name_rect)
-        quote = f"\"{relic.flavor_text}\""
-        flavor_font, flavor_lines = _fit_lines(quote, flavor_rect.w, flavor_rect.h, max(11, rect.h // 24), False)
-        self._draw_lines(screen, flavor_lines, flavor_font, FLAVOR, flavor_rect)
-        body_font, body_lines = _fit_lines(relic.description, body_rect.w, body_rect.h, max(11, rect.h // 26), False)
-        self._draw_lines(screen, body_lines, body_font, INK, body_rect)
-        if owned:
-            tag = pygame.Rect(rect.right - 74, rect.y + 8, 66, 20)
-            pygame.draw.rect(screen, (120, 84, 36), tag, border_radius=6)
-            _blit_text(screen, "Owned", get_font(12, bold=True), PARCHMENT, center=tag.center)
+            image = self._surface(assets, relic, card.w, card.h, False)
+        if progress is not None:
+            amount = max(0.04, min(1.0, abs(float(progress))))
+            width = max(1, int(round(image.get_width() * amount)))
+            if width != image.get_width():
+                image = pygame.transform.smoothscale(image, (width, image.get_height()))
+        screen.blit(image, image.get_rect(center=card.center))
 
-    def _draw_compact(self, screen: pygame.Surface, assets: AssetManager, relic: RelicDef, rect: pygame.Rect) -> None:
-        pad = max(4, rect.w // 18)
-        name_h = max(22, min(40, rect.h // 3))
-        name_rect = pygame.Rect(rect.x + pad, rect.y + 4, rect.w - pad * 2, name_h)
-        art_rect = pygame.Rect(rect.x + pad, name_rect.bottom + 2, rect.w - pad * 2, max(8, rect.bottom - name_rect.bottom - pad))
-        font, lines = _fit_lines(relic.name.upper(), name_rect.w, name_rect.h, max(11, rect.w // 11), True)
-        self._draw_lines(screen, lines[:2], font, INK, name_rect)
-        self._draw_art(screen, assets, relic, art_rect)
-
-    def _draw_art(self, screen: pygame.Surface, assets: AssetManager, relic: RelicDef, rect: pygame.Rect) -> None:
-        pygame.draw.rect(screen, (214, 196, 170), rect, border_radius=8)
-        pygame.draw.rect(screen, RULE, rect, width=1, border_radius=8)
-        key = f"relic_art_{relic.id}"
-        if assets.has(key):
-            image = assets.fitted(key, max(1, rect.w - 8), max(1, rect.h - 8))
-            screen.blit(image, image.get_rect(center=rect.center))
-            return
-        self._draw_placeholder(screen, relic.id, rect)
-
-    def _draw_placeholder(self, screen: pygame.Surface, relic_id: str, rect: pygame.Rect) -> None:
-        center = rect.center
-        roll = pygame.Rect(0, 0, max(16, rect.w // 3), max(12, rect.h // 4))
-        roll.center = center
-        tint = (148, 92, 48)
-        if relic_id == "blood_contract":
-            splash = roll.inflate(rect.w // 3, rect.h // 5)
-            pygame.draw.ellipse(screen, (150, 42, 36), splash)
-            tint = (176, 132, 64)
-        elif relic_id == "conversion":
-            tint = (168, 168, 176)
-        elif relic_id == "gold_charm":
-            tint = (196, 156, 64)
-        pygame.draw.ellipse(screen, tint, roll)
-        pygame.draw.ellipse(screen, (92, 58, 32), roll, width=2)
-        band = pygame.Rect(roll.x, roll.centery - 3, roll.w, 6)
-        pygame.draw.rect(screen, (120, 36, 32), band)
-
-    def _draw_lines(
+    def _surface(
         self,
-        screen: pygame.Surface,
-        lines: list[str],
-        font: pygame.font.Font,
-        color: tuple[int, int, int],
-        rect: pygame.Rect,
-    ) -> None:
-        total = font.get_height() * len(lines)
-        y = rect.y + max(0, (rect.h - total) // 2)
-        for line in lines:
-            _blit_text(screen, line, font, color, center=(rect.centerx, y + font.get_height() // 2))
-            y += font.get_height()
+        assets: AssetManager,
+        relic: RelicDef | None,
+        width: int,
+        height: int,
+        face_down: bool,
+    ) -> pygame.Surface:
+        width = max(1, int(width))
+        height = max(1, int(height))
+        key = ("back" if face_down or relic is None else relic.id, width, height, face_down or relic is None)
+        cached = self._faces.get(key)
+        if cached is not None:
+            return cached
+        if face_down or relic is None:
+            image = _compose_back(assets, width, height)
+        else:
+            image = _compose_face(assets, relic, width, height)
+        self._faces[key] = image
+        return image
+
+
+def _compose_back(assets: AssetManager, width: int, height: int) -> pygame.Surface:
+    card = pygame.Surface((width, height), pygame.SRCALPHA)
+    if assets.has("relic_back"):
+        image = assets.fitted("relic_back", width, height)
+        card.blit(image, image.get_rect(center=(width // 2, height // 2)))
+        return card
+    pygame.draw.rect(card, (92, 48, 36), card.get_rect(), border_radius=max(6, width // 18))
+    return card
+
+
+def _compose_face(assets: AssetManager, relic: RelicDef, width: int, height: int) -> pygame.Surface:
+    card = pygame.Surface((width, height), pygame.SRCALPHA)
+    if assets.has("relic_card"):
+        card.blit(assets.scaled("relic_card", (width, height)), (0, 0))
+    else:
+        pygame.draw.rect(card, (236, 226, 206), card.get_rect(), border_radius=max(6, width // 18))
+    text_width = max(1, int(width * (1 - TEXT_MARGIN * 2)))
+    title_font, title_lines = _fit_block(relic.name.upper(), text_width, int(height * 0.055), 2, True, single=True)
+    flavour = f"\u201c{_protect(relic.flavor_text.upper())}\u201d"
+    effect = _protect(relic.description.upper())
+    flavour_font, flavour_lines = _fit_block(flavour, text_width, int(height * 0.034), 2, True, single=True)
+    effect_font, effect_lines = _fit_block(effect, text_width, int(height * 0.027), 3, False)
+    title_rect = _band(width, height, title_font, title_lines, TITLE_Y)
+    flavour_rect = _band(width, height, flavour_font, flavour_lines, FLAVOUR_Y)
+    effect_rect = _band(width, height, effect_font, effect_lines, EFFECT_Y)
+    gap = max(2, int(height * 0.012))
+    floor = int(height * 0.955)
+    if effect_rect.bottom > floor:
+        effect_rect.bottom = floor
+    if flavour_rect.bottom + gap > effect_rect.top:
+        flavour_rect.bottom = effect_rect.top - gap
+    if title_rect.top < int(height * 0.035):
+        title_rect.top = int(height * 0.035)
+    art = pygame.Rect(
+        int(width * ART_MARGIN_X),
+        int(height * ART_TOP),
+        max(1, int(width * (1 - ART_MARGIN_X * 2))),
+        max(1, int(height * (ART_BOTTOM - ART_TOP))),
+    )
+    if title_rect.bottom + gap > art.top:
+        art.top = title_rect.bottom + gap
+    if art.bottom > flavour_rect.top - gap:
+        art.height = max(1, flavour_rect.top - gap - art.top)
+    _blit_art(card, assets, relic, art)
+    _draw_title(card, title_lines, title_font, title_rect)
+    _draw_lines(card, flavour_lines, flavour_font, flavour_font, flavour_rect)
+    _draw_lines(card, effect_lines, effect_font, _serif(max(7, effect_font.get_point_size()), True), effect_rect)
+    return card
+
+
+def _band(width: int, height: int, font: pygame.font.Font, lines: list[str], anchor: float) -> pygame.Rect:
+    band_h = max(1, font.get_height() * max(1, len(lines)))
+    rect = pygame.Rect(int(width * TEXT_MARGIN), 0, max(1, int(width * (1 - TEXT_MARGIN * 2))), band_h)
+    rect.centery = int(height * anchor)
+    return rect
+
+
+def _fit_block(
+    text: str,
+    width: int,
+    start: int,
+    max_lines: int,
+    bold: bool,
+    single: bool = False,
+) -> tuple[pygame.font.Font, list[str]]:
+    plain = text.replace("\u00a0", " ")
+    size = max(7, int(start))
+    floor = max(7, int(start * 0.7)) if single else 7
+    while size > floor:
+        font = _serif(size, bold)
+        if font.size(plain)[0] <= width:
+            return font, [text]
+        if not single:
+            lines = wrap_text(font, text, width)
+            if 0 < len(lines) <= max_lines:
+                return font, lines
+        size -= 1
+    font = _serif(max(7, floor if single else size), bold)
+    if font.size(plain)[0] <= width:
+        return font, [text]
+    lines = wrap_text(font, text, max(1, width)) or [text]
+    return font, lines[: max(1, max_lines)]
+
+
+def _protect(text: str) -> str:
+    protected = text
+    for word in _KEYWORDS:
+        protected = protected.replace(word, word.replace(" ", "\u00a0"))
+    return protected
+
+
+def _blit_art(card: pygame.Surface, assets: AssetManager, relic: RelicDef, rect: pygame.Rect) -> None:
+    if rect.w < 2 or rect.h < 2:
+        return
+    image = artwork.image(assets, relic)
+    if image is None:
+        return
+    fitted = _fit(image, rect.w, rect.h)
+    card.blit(fitted, fitted.get_rect(center=rect.center))
+
+
+def _fit(source: pygame.Surface, max_width: int, max_height: int) -> pygame.Surface:
+    width, height = source.get_size()
+    scale = min(max_width / max(1, width), max_height / max(1, height))
+    size = (max(1, int(round(width * scale))), max(1, int(round(height * scale))))
+    if size == (width, height):
+        return source
+    return pygame.transform.smoothscale(source, size)
+
+
+def _draw_title(screen: pygame.Surface, lines: list[str], font: pygame.font.Font, rect: pygame.Rect) -> None:
+    if len(lines) == 1:
+        _draw_tracked(screen, lines[0].replace("\u00a0", " "), font, rect)
+        return
+    _draw_lines(screen, lines, font, font, rect)
+
+
+def _draw_lines(
+    screen: pygame.Surface,
+    lines: list[str],
+    font: pygame.font.Font,
+    bold: pygame.font.Font,
+    rect: pygame.Rect,
+) -> None:
+    total = font.get_height() * len(lines)
+    y = rect.y + max(0, (rect.h - total) // 2)
+    step = font.get_height()
+    for line in lines:
+        _draw_rich(screen, line, font, bold, (rect.centerx, y + step // 2))
+        y += step
+
+
+def _draw_rich(
+    screen: pygame.Surface,
+    line: str,
+    font: pygame.font.Font,
+    bold: pygame.font.Font,
+    center: tuple[int, int],
+) -> None:
+    glyphs = []
+    for text, strong in _runs(line):
+        glyphs.append((bold if strong else font).render(text, True, INK))
+    if not glyphs:
+        return
+    total = sum(glyph.get_width() for glyph in glyphs)
+    x = center[0] - total // 2
+    for glyph in glyphs:
+        screen.blit(glyph, (x, center[1] - glyph.get_height() // 2))
+        x += glyph.get_width()
+
+
+def _runs(line: str) -> list[tuple[str, bool]]:
+    upper = line.upper()
+    cursor = 0
+    runs: list[tuple[str, bool]] = []
+    while cursor < len(line):
+        found = ""
+        for word in _KEYWORDS:
+            token = word.replace(" ", "\u00a0")
+            for candidate in (token, word):
+                if not upper.startswith(candidate, cursor):
+                    continue
+                end = cursor + len(candidate)
+                before = cursor == 0 or not line[cursor - 1].isalnum()
+                after = end >= len(line) or not line[end].isalnum()
+                if before and after and len(candidate) > len(found):
+                    found = candidate
+        if found:
+            runs.append((line[cursor : cursor + len(found)].replace("\u00a0", " "), True))
+            cursor += len(found)
+            continue
+        nxt = len(line)
+        for word in _KEYWORDS:
+            token = word.replace(" ", "\u00a0")
+            for candidate in (token, word):
+                at = upper.find(candidate, cursor + 1)
+                if at != -1:
+                    nxt = min(nxt, at)
+        runs.append((line[cursor:nxt].replace("\u00a0", " "), False))
+        cursor = nxt
+    return [(text, strong) for text, strong in runs if text]
+
+
+def _draw_tracked(screen: pygame.Surface, text: str, font: pygame.font.Font, rect: pygame.Rect) -> None:
+    gap = max(0, min(4, rect.w // 48))
+    glyphs = [font.render(character, True, INK) for character in text]
+    total = sum(glyph.get_width() for glyph in glyphs) + gap * max(0, len(glyphs) - 1)
+    if total > rect.w:
+        gap = 0
+        total = sum(glyph.get_width() for glyph in glyphs)
+    x = rect.centerx - total // 2
+    for glyph in glyphs:
+        screen.blit(glyph, (x, rect.centery - glyph.get_height() // 2))
+        x += glyph.get_width() + gap
+
+
+def _portrait_rect(bounds: pygame.Rect) -> pygame.Rect:
+    if bounds.w < 2 or bounds.h < 2:
+        return bounds
+    if abs(bounds.w / bounds.h - CARD_RATIO) <= 0.02:
+        return bounds
+    if bounds.w / bounds.h > CARD_RATIO:
+        width = max(1, int(round(bounds.h * CARD_RATIO)))
+        rect = pygame.Rect(0, 0, min(bounds.w, width), bounds.h)
+    else:
+        height = max(1, int(round(bounds.w / CARD_RATIO)))
+        rect = pygame.Rect(0, 0, bounds.w, min(bounds.h, height))
+    rect.center = bounds.center
+    return rect
 
 
 def _mute(surface: pygame.Surface) -> None:

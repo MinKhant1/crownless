@@ -7,15 +7,19 @@ from config.settings import (
     PIECE_PRICE,
     RELIC_PRICE,
     REROLL_PRICE,
+    SCENE_SLIDE_TIME,
     SHOP_BUY,
+    SHOP_CARD_STAGGER,
     SHOP_ICON,
     TURN_CHECK,
 )
+from game.transitions.easing import ease_out_cubic
 from game.relics.relic_data import relic_by_id
 from game.run_state import RunState
-from rendering.relic_card import RelicCardRenderer
+from rendering.relic_card import CARD_RATIO, RelicCardRenderer
+from rendering.relic_flip import shop_reveal
 from rendering.asset_manager import AssetManager
-from rendering.hud_renderer import _blit_text, draw_button, get_font
+from rendering.hud_renderer import _blit_text, draw_background, draw_button, draw_relic_glow, get_font
 from rendering.shop_layout import ShopLayout
 
 
@@ -26,56 +30,29 @@ def _gold_line(amount: int) -> str:
     return f"{amount} Gold"
 
 
-def draw_shop(screen: pygame.Surface, assets: AssetManager, run: RunState, layout: ShopLayout) -> None:
-    background, origin = assets.cover("background", screen.get_width(), screen.get_height())
-    screen.blit(background, origin)
+def draw_shop(
+    screen: pygame.Surface,
+    assets: AssetManager,
+    run: RunState,
+    layout: ShopLayout,
+    backdrop: bool = True,
+    entrance: float = 1.0,
+) -> None:
+    if backdrop:
+        draw_background(screen, assets)
     shop = assets.scaled("shop_background", (layout.background.w, layout.background.h))
     screen.blit(shop, layout.background.topleft)
     prices = (_gold_line(PIECE_PRICE), _gold_line(RELIC_PRICE), _gold_line(ARMY_UPGRADE_PRICE))
-    tag_font = get_font(max(16, layout.tags[0].h * 0.34), bold=True)
-    for tag, price in zip(layout.tags, prices):
-        image = assets.scaled("price_tag", (tag.w, tag.h))
-        screen.blit(image, tag.topleft)
-        _blit_text(screen, price, tag_font, DARK_TEXT, center=tag.center)
     card_image = assets.scaled("buying_square", (layout.cards[0].w, layout.cards[0].h))
     labels = (run.shop.piece_kind.capitalize(), "", "Army Size")
-    subtitles = ("", "", "")
-    relic_ready = run.shop.relic_id is not None and not run.shop.relic_sold
-    sold = (run.shop.piece_sold, run.shop.relic_sold and run.shop.relic_id is not None, run.shop.army_sold)
-    enabled = (not run.shop.piece_sold, relic_ready, not run.shop.army_sold)
     for index, card in enumerate(layout.cards):
-        screen.blit(card_image, card.topleft)
-        if index == 1:
-            _draw_relic_offer(screen, assets, card, run)
-        else:
-            _draw_offer(screen, assets, card, labels[index], subtitles[index], index, run)
-        if index == 1 and run.shop.relic_id is None:
-            plaque = "None"
-        elif sold[index]:
-            plaque = "Sold"
-        else:
-            plaque = "Buy"
-        _blit_text(
-            screen,
-            plaque,
-            get_font(max(15, card.h * 0.07), bold=True),
-            LIGHT_TEXT if enabled[index] or sold[index] else (176, 164, 148),
-            center=layout.buys[index].center,
-        )
-        if sold[index]:
-            shade = pygame.Surface(card.size, pygame.SRCALPHA)
-            shade.fill((24, 14, 10, 130))
-            screen.blit(shade, card.topleft)
-            _blit_text(screen, "SOLD OUT", get_font(max(18, card.h * 0.09), bold=True), (236, 214, 170), center=card.center)
-    reroll = assets.scaled("reroll_board", (layout.reroll.w, layout.reroll.h))
-    screen.blit(reroll, layout.reroll.topleft)
-    _blit_text(
-        screen,
-        _gold_line(REROLL_PRICE),
-        get_font(max(16, layout.reroll_label.h * 0.42), bold=True),
-        DARK_TEXT,
-        center=layout.reroll_label.center,
-    )
+        dx, alpha = _card_motion(entrance, index)
+        if alpha <= 0:
+            continue
+        _draw_shop_card(screen, assets, run, layout, index, card, card_image, prices[index], labels[index], dx, alpha)
+    dx, alpha = _card_motion(entrance, 3)
+    if alpha > 0:
+        _draw_reroll(screen, assets, layout, dx, alpha)
     gold_tag = assets.scaled("price_tag", (layout.gold.w, layout.gold.h))
     screen.blit(gold_tag, layout.gold.topleft)
     _blit_text(
@@ -91,19 +68,163 @@ def draw_shop(screen: pygame.Surface, assets: AssetManager, run: RunState, layou
         _blit_text(screen, run.notice, get_font(20, bold=True), color, center=layout.notice.center)
 
 
+def _card_motion(entrance: float, index: int) -> tuple[int, int]:
+    if entrance >= 1.0:
+        return 0, 255
+    portion = SHOP_CARD_STAGGER / max(0.01, SCENE_SLIDE_TIME)
+    local = (entrance - index * portion) / 0.7
+    local = max(0.0, min(1.0, local))
+    eased = ease_out_cubic(local)
+    return int((1.0 - eased) * 64), int(255 * eased)
+
+
+def _draw_shop_card(
+    screen: pygame.Surface,
+    assets: AssetManager,
+    run: RunState,
+    layout: ShopLayout,
+    index: int,
+    card: pygame.Rect,
+    card_image: pygame.Surface,
+    price: str,
+    label: str,
+    dx: int,
+    alpha: int,
+) -> None:
+    card = card.move(dx, 0)
+    tag = layout.tags[index].move(dx, 0)
+    buy = layout.buys[index].move(dx, 0)
+    target: pygame.Surface = screen
+    plate = None
+    origin = card.topleft
+    if alpha < 255:
+        bounds = card.union(tag)
+        plate = pygame.Surface(bounds.size, pygame.SRCALPHA)
+        target = plate
+        card = card.move(-bounds.x, -bounds.y)
+        tag = tag.move(-bounds.x, -bounds.y)
+        buy = buy.move(-bounds.x, -bounds.y)
+        origin = bounds.topleft
+    tag_font = get_font(max(16, tag.h * 0.34), bold=True)
+    target.blit(assets.scaled("price_tag", (tag.w, tag.h)), tag.topleft)
+    _blit_text(target, price, tag_font, DARK_TEXT, center=tag.center)
+    target.blit(card_image, card.topleft)
+    if index == 1:
+        _draw_relic_offer(target, assets, card, run)
+    else:
+        _draw_offer(target, assets, card, label, "", index, run)
+    relic_ready = run.shop.relic_id is not None and not run.shop.relic_sold
+    sold = (run.shop.piece_sold, run.shop.relic_sold and run.shop.relic_id is not None, run.shop.army_sold)
+    enabled = (not run.shop.piece_sold, relic_ready, not run.shop.army_sold)
+    if index == 1 and run.shop.relic_id is None:
+        plaque = "None"
+    elif sold[index]:
+        plaque = "Sold"
+    else:
+        plaque = "Buy"
+    _blit_text(
+        target,
+        plaque,
+        get_font(max(15, card.h * 0.07), bold=True),
+        LIGHT_TEXT if enabled[index] or sold[index] else (176, 164, 148),
+        center=buy.center,
+    )
+    if sold[index]:
+        shade = pygame.Surface(card.size, pygame.SRCALPHA)
+        shade.fill((24, 14, 10, 130))
+        target.blit(shade, card.topleft)
+        _blit_text(target, "SOLD OUT", get_font(max(18, card.h * 0.09), bold=True), (236, 214, 170), center=card.center)
+    if plate is not None:
+        plate.set_alpha(alpha)
+        screen.blit(plate, origin)
+
+
+def _draw_reroll(screen: pygame.Surface, assets: AssetManager, layout: ShopLayout, dx: int, alpha: int) -> None:
+    reroll = layout.reroll.move(dx, 0)
+    label = layout.reroll_label.move(dx, 0)
+    target: pygame.Surface = screen
+    plate = None
+    origin = reroll.topleft
+    if alpha < 255:
+        bounds = reroll.union(label)
+        plate = pygame.Surface(bounds.size, pygame.SRCALPHA)
+        target = plate
+        reroll = reroll.move(-bounds.x, -bounds.y)
+        label = label.move(-bounds.x, -bounds.y)
+        origin = bounds.topleft
+    target.blit(assets.scaled("reroll_board", (layout.reroll.w, layout.reroll.h)), reroll.topleft)
+    _blit_text(
+        target,
+        _gold_line(REROLL_PRICE),
+        get_font(max(16, layout.reroll_label.h * 0.42), bold=True),
+        DARK_TEXT,
+        center=label.center,
+    )
+    if plate is not None:
+        plate.set_alpha(alpha)
+        screen.blit(plate, origin)
+
+
+def _relic_slot(card: pygame.Rect) -> pygame.Rect:
+    top = card.y + int(card.h * 0.04)
+    bottom = card.y + int(card.h * SHOP_BUY[1]) - max(2, int(card.h * 0.02))
+    height = max(1, bottom - top)
+    width = max(1, int(round(height * CARD_RATIO)))
+    limit = max(1, int(card.w * 0.92))
+    if width > limit:
+        width = limit
+        height = max(1, int(round(width / CARD_RATIO)))
+    rect = pygame.Rect(0, 0, width, height)
+    rect.midtop = (card.centerx, top)
+    return rect
+
+
 def _draw_relic_offer(screen: pygame.Surface, assets: AssetManager, card: pygame.Rect, run: RunState) -> None:
     relic_id = run.shop.relic_id
     definition = relic_by_id(relic_id) if relic_id else None
+    slot = _relic_slot(card)
     if definition is None:
-        _blit_text(screen, "No Relic", get_font(max(16, int(card.h * 0.08)), bold=True), DARK_TEXT, center=card.center)
+        _blit_card_face(screen, assets, None, slot, False)
         return
-    inner = pygame.Rect(
-        card.x + int(card.w * 0.08),
-        card.y + int(card.h * 0.06),
-        int(card.w * 0.84),
-        int(card.h * 0.66),
-    )
-    _CARDS.draw(screen, assets, definition, inner, owned=run.relics.owns(definition.id))
+    face_up = shop_reveal.face_up
+    _blit_card_face(screen, assets, definition, slot, face_up)
+    if _SHOP_HOVER and face_up:
+        draw_relic_glow(screen, slot)
+    if run.gold < RELIC_PRICE and not run.shop.relic_sold:
+        shade = pygame.Surface(slot.size, pygame.SRCALPHA)
+        shade.fill((20, 12, 8, 70))
+        screen.blit(shade, slot.topleft)
+
+
+def shop_relic_rect(layout: ShopLayout) -> pygame.Rect:
+    return _relic_slot(layout.cards[1])
+
+
+def shop_card_hovered() -> bool:
+    return _SHOP_HOVER
+
+
+def set_shop_hover(pos: tuple[int, int] | None, layout, run: RunState | None = None) -> None:
+    global _SHOP_HOVER
+    slot = shop_relic_rect(layout)
+    ready = run is not None and bool(run.shop.relic_id) and shop_reveal.face_up
+    _SHOP_HOVER = pos is not None and ready and slot.collidepoint(pos)
+
+
+_SHOP_HOVER = False
+
+
+def _blit_card_face(screen: pygame.Surface, assets: AssetManager, definition, rect: pygame.Rect, face_up: bool) -> None:
+    plate = pygame.Surface((max(1, rect.w), max(1, rect.h)), pygame.SRCALPHA)
+    local = plate.get_rect()
+    if face_up and definition is not None:
+        _CARDS.draw(plate, assets, definition, local)
+    else:
+        _CARDS.draw(plate, assets, definition, local, face_down=True)
+    width = max(1, int(plate.get_width() * shop_reveal.scale_x))
+    if width != plate.get_width():
+        plate = pygame.transform.smoothscale(plate, (width, plate.get_height()))
+    screen.blit(plate, plate.get_rect(center=rect.center))
 
 
 def _fit_font(text: str, max_width: int, size: int, bold: bool) -> pygame.font.Font:

@@ -23,6 +23,19 @@ class RelicContext:
         return battle.game.board
 
     @property
+    def game(self):
+        battle = self.run.battle
+        if battle is None:
+            return None
+        return battle.game
+
+    def flash(self, col: int, row: int, color: tuple[int, int, int]) -> None:
+        game = self.game
+        if game is None:
+            return
+        game.relic_flashes.append((col, row, color))
+
+    @property
     def dispatcher(self):
         return self.run.relics.dispatcher
 

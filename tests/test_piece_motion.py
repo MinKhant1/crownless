@@ -113,16 +113,18 @@ class FigurineTests(unittest.TestCase):
         self.assertIs(special_pieces.image(self.assets, "white", "knight", None, 72), fitted)
 
     def test_ghost_stays_paler_than_the_solid_figure(self):
-        solid = figurines.image(self.assets, Piece(1, "knight", "white", 0, 1), 80)
-        ghost_source = special_pieces.image(self.assets, "white", "knight", "ghost", 80)
-        ghost = figurines.image(self.assets, Piece(2, "knight", "white", 0, 1, trait="ghost"), 80)
-        spot = _interior(ghost_source)
+        fitted = self.assets.fitted("white_knight", 80, 80)
+        spot = _interior(fitted)
         self.assertIsNotNone(spot)
         assert spot is not None
-        faded = ghost.get_at((spot[0] + 1, spot[1] + 1))
-        plain = solid.get_at((spot[0] + 1, spot[1] + 1))
-        self.assertLess(faded.a, int(plain.a * 0.85))
-        self.assertGreater(faded.a, 20)
+        solid = figurines.image(self.assets, Piece(1, "knight", "white", 0, 1), 80)
+        ghost = figurines.image(self.assets, Piece(2, "knight", "white", 0, 1, trait="ghost"), 80)
+        ghost_pad = ((ghost.get_width() - fitted.get_width()) // 2, (ghost.get_height() - fitted.get_height()) // 2)
+        solid_pad = ((solid.get_width() - fitted.get_width()) // 2, (solid.get_height() - fitted.get_height()) // 2)
+        faded = ghost.get_at((spot[0] + ghost_pad[0], spot[1] + ghost_pad[1]))
+        plain = solid.get_at((spot[0] + solid_pad[0], spot[1] + solid_pad[1]))
+        self.assertLess(faded.a, int(plain.a * 0.92))
+        self.assertGreater(faded.a, int(plain.a * 0.55))
 
     def test_shadow_is_darker_toward_the_center(self):
         screen = pygame.Surface((120, 60), pygame.SRCALPHA)

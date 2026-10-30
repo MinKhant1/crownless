@@ -9,6 +9,7 @@ from config.settings import (
 )
 from game.piece import Piece
 from rendering.special_piece_renderer import special_pieces
+from rendering.trait_style import trait_style
 
 
 class FigurineCache:
@@ -21,7 +22,7 @@ class FigurineCache:
         self._shadows.clear()
 
     def image(self, assets, piece: Piece, box: int) -> pygame.Surface:
-        key = (piece.color, piece.kind, piece.trait, box)
+        key = (piece.color, piece.kind, piece.trait, box, trait_style.strong)
         cached = self._cache.get(key)
         if cached is not None:
             return cached
@@ -84,8 +85,9 @@ def _dress(image: pygame.Surface, ghost: bool) -> pygame.Surface:
     body = source.copy()
     _shade_base(body, cover, width, height, ghost)
     _add_highlight(body, cover, width, height, ghost)
-    if not ghost:
-        _add_speck(body, cover, width, height)
+    if ghost:
+        return body
+    _add_speck(body, cover, width, height)
     pad = 1
     canvas = pygame.Surface((width + pad * 2, height + pad * 2), pygame.SRCALPHA)
     dark = mask.to_surface(setcolor=(36, 22, 14, 22 if ghost else 48), unsetcolor=(0, 0, 0, 0))

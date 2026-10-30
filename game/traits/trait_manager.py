@@ -45,6 +45,9 @@ class TraitManager:
         battle = self.run.battle
         if battle is not None:
             pools.append(battle.game.board.pieces)
+        visual = getattr(self.run, "visual_pieces", None)
+        if visual:
+            pools.append(visual)
         for pool in pools:
             for piece in pool:
                 if piece.id != piece_id or id(piece) in seen:

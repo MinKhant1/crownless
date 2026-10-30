@@ -10,15 +10,12 @@ from game.relics.relic_manager import OwnedRelic
 from game.run_state import RunState
 from game.traits import trait_name
 from rendering.asset_manager import AssetManager
-from rendering.hud_renderer import _blit_text, draw_button, get_font
+from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font
 from rendering.layout import Layout
 from rendering.relic_card import RelicCardRenderer
-from rendering.relic_tooltip_renderer import draw_relic_tooltip
 
 
 FLASH_MS = 520
-HOVER_LIFT = 10
-HOVER_SCALE = 1.08
 
 
 @dataclass
@@ -40,7 +37,10 @@ class RelicBar:
         self.detail_piece: int | None = None
         self.notice = ""
         self.armed = False
+        self.clicked: RelicSlot | None = None
         self.flashes: dict[str, int] = {}
+        self.flash_note = ""
+        self.flash_note_until = 0
         self._bound = None
 
     def bind(self, run: RunState) -> None:
@@ -90,14 +90,19 @@ class RelicBar:
             if definition is None:
                 continue
             amount = self.pulse(owned.instance_id, now)
-            hovered = self.hover_id == owned.instance_id and self.detail_id is None
             lift = int(round(8 * amount))
             scale = 1.0 + 0.06 * amount
-            if hovered:
-                lift += HOVER_LIFT
-                scale *= HOVER_SCALE
             drawn = pygame.Rect(0, 0, max(1, int(rest.w * scale)), max(1, int(rest.h * scale)))
             drawn.midbottom = (rest.centerx, rest.bottom - lift)
+            margin = 6
+            window_w, window_h = layout.window
+            if drawn.h <= window_h - margin * 2 and drawn.top < margin:
+                drawn.top = margin
+            if drawn.w <= window_w - margin * 2:
+                if drawn.left < margin:
+                    drawn.left = margin
+                if drawn.right > window_w - margin:
+                    drawn.right = window_w - margin
             slots.append(RelicSlot(owned, definition, card_state(run, owned), rest, drawn, amount))
         return slots
 
@@ -157,10 +162,13 @@ class RelicBar:
             return True
         slot = self._slot_at(pos, run, layout, now)
         if slot is not None:
-            self.detail_id = slot.owned.instance_id
-            self.detail_piece = None
-            self.notice = ""
+            self.clicked = slot
         return True
+
+    def consume_click(self) -> RelicSlot | None:
+        slot = self.clicked
+        self.clicked = None
+        return slot
 
     def on_right_click(self) -> bool:
         if self.detail_id is None:
@@ -170,44 +178,47 @@ class RelicBar:
 
     def draw_cards(self, screen: pygame.Surface, assets: AssetManager, run: RunState, layout: Layout, now: int | None = None) -> None:
         moment = pygame.time.get_ticks() if now is None else now
+        _draw_relic_well(screen, layout.relics)
         if not run.relics.owned:
-            _blit_text(
-                screen,
-                "No Relics",
-                get_font(max(14, layout.relics.h // 6)),
-                (168, 140, 110),
-                center=layout.relics.center,
-            )
             return
-        for slot in self.placements(run, layout, moment):
+        slots = self.placements(run, layout, moment)
+        hovered = [slot for slot in slots if slot.owned.instance_id == self.hover_id]
+        resting = [slot for slot in slots if slot.owned.instance_id != self.hover_id]
+        for slot in resting + hovered:
             _blit_shadow(screen, slot.drawn)
             image = self.cards.mini_surface(assets, slot.definition, slot.rest.w, slot.rest.h, slot.state)
             if image.get_size() != slot.drawn.size:
                 image = pygame.transform.smoothscale(image, slot.drawn.size)
             screen.blit(image, slot.drawn.topleft)
+            if slot.owned.instance_id == self.hover_id and self.detail_id is None:
+                draw_relic_glow(screen, slot.drawn)
             if slot.pulse > 0:
                 _blit_gold(screen, slot.drawn, slot.pulse)
         left, right = self.arrow_rects(layout, len(self.ordered(run)))
         if left is not None and right is not None:
             draw_button(screen, left, "<", enabled=self.scroll > 0, font_size=16)
             draw_button(screen, right, ">", enabled=self.scroll < len(self.ordered(run)) - RELIC_BAR_SLOTS, font_size=16)
+        if self.flash_note and moment < self.flash_note_until:
+            _blit_text(
+                screen,
+                self.flash_note,
+                get_font(16, bold=True),
+                (236, 210, 140),
+                center=(layout.relics.centerx, max(18, layout.relics.top - 14)),
+            )
 
     def draw_overlay(self, screen: pygame.Surface, assets: AssetManager, run: RunState, layout: Layout, now: int | None = None) -> None:
-        moment = pygame.time.get_ticks() if now is None else now
         if self.detail_id is not None:
             self._draw_detail(screen, assets, run, screen.get_size())
-            return
-        if self.hover_id is None:
-            return
-        for slot in self.placements(run, layout, moment):
-            if slot.owned.instance_id == self.hover_id:
-                draw_relic_tooltip(screen, slot.definition, slot.drawn, layout.relics)
-                return
 
     def _on_visual(self, event) -> None:
         instance_id = event.payload.get("relic_instance_id")
         if instance_id:
             self.flashes[instance_id] = pygame.time.get_ticks()
+        message = event.payload.get("message") or ""
+        if message:
+            self.flash_note = message
+            self.flash_note_until = pygame.time.get_ticks() + 900
 
     def _slot_at(self, pos: tuple[int, int], run: RunState, layout: Layout, now: int | None) -> RelicSlot | None:
         moment = pygame.time.get_ticks() if now is None else now
@@ -299,7 +310,7 @@ def rest_rects(band: pygame.Rect, count: int, scrolling: bool) -> list[pygame.Re
         return []
     inset = 36 if scrolling else 8
     available = max(1, band.w - inset * 2)
-    gap = 8 if available > 420 else 4
+    gap = -12 if count >= 5 else (8 if available > 420 else 4)
     card_h = max(48, min(RELIC_CARD_HEIGHT, band.h - 8))
     card_w = max(36, int(round(card_h * RELIC_CARD_WIDTH / RELIC_CARD_HEIGHT)))
     total = count * card_w + (count - 1) * gap
@@ -364,6 +375,13 @@ def _activate_rect(panel: pygame.Rect) -> pygame.Rect:
     rect = pygame.Rect(0, 0, min(180, panel.w - 48), 36)
     rect.midbottom = (panel.centerx, panel.bottom - 36)
     return rect
+
+
+def _draw_relic_well(screen: pygame.Surface, rect: pygame.Rect) -> None:
+    plate = pygame.Surface((max(1, rect.w), max(1, rect.h)), pygame.SRCALPHA)
+    pygame.draw.rect(plate, (236, 220, 196, 72), plate.get_rect(), border_radius=14)
+    pygame.draw.rect(plate, (214, 170, 90, 190), plate.get_rect(), width=2, border_radius=14)
+    screen.blit(plate, rect.topleft)
 
 
 def _blit_shadow(screen: pygame.Surface, rect: pygame.Rect) -> None:

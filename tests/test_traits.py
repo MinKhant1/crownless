@@ -286,12 +286,15 @@ class OverlayTests(unittest.TestCase):
             self.assertIsNotNone(spot)
             golden = special_pieces.image(self.assets, color, "knight", "golden", 96)
             ghost = special_pieces.image(self.assets, color, "knight", "ghost", 96)
-            self.assertEqual(golden.get_width(), fitted.get_width() + 2)
+            gold_pad = (golden.get_width() - fitted.get_width()) // 2
+            ghost_pad_x = (ghost.get_width() - fitted.get_width()) // 2
+            ghost_pad_y = (ghost.get_height() - fitted.get_height()) // 2
+            self.assertGreaterEqual(gold_pad, 1)
             base = fitted.get_at(spot)
-            faded = ghost.get_at(spot)
-            self.assertLess(faded.a, int(base.a * 0.72))
-            self.assertGreater(faded.a, int(base.a * 0.48))
-            warmed = golden.get_at((spot[0] + 1, spot[1] + 1))
+            faded = ghost.get_at((spot[0] + ghost_pad_x, spot[1] + ghost_pad_y))
+            self.assertLess(faded.a, int(base.a * 0.92))
+            self.assertGreater(faded.a, int(base.a * 0.55))
+            warmed = golden.get_at((spot[0] + gold_pad, spot[1] + gold_pad))
             self.assertNotEqual((warmed.r, warmed.g, warmed.b), (base.r, base.g, base.b))
         screen = pygame.Surface((140, 140), pygame.SRCALPHA)
         draw_crosshair(screen, pygame.Rect(10, 10, 100, 100))

@@ -15,3 +15,16 @@ def formation_counts(level: int) -> dict[str, int]:
     for kind, _square in ENEMY_FORMATIONS[level]:
         counts[kind] = counts.get(kind, 0) + 1
     return counts
+
+
+def describe_counts(counts: dict[str, int]) -> str:
+    parts: list[str] = []
+    for kind in ("king", "queen", "rook", "bishop", "knight", "pawn"):
+        count = counts.get(kind, 0)
+        if count <= 0:
+            continue
+        name = kind.capitalize()
+        if count != 1:
+            name += "s"
+        parts.append(f"{count} {name}")
+    return ", ".join(parts)

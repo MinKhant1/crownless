@@ -18,6 +18,7 @@ from game.game import Game
 from game.turn_manager import TurnManager
 from rendering.asset_manager import AssetManager
 from rendering.layout import Layout
+from rendering.wood_swirl import wood_swirl
 
 _FONTS: dict[tuple[int, bool], pygame.font.Font] = {}
 
@@ -48,6 +49,21 @@ def turn_text(turns: TurnManager) -> str:
         return "Stalemate"
     name = "White" if turns.current == "white" else "Black"
     return f"{name}'s Turn"
+
+
+def draw_glass(screen: pygame.Surface, rect: pygame.Rect, radius: int = 16) -> None:
+    plate = pygame.Surface((max(1, rect.w), max(1, rect.h)), pygame.SRCALPHA)
+    body = plate.get_rect()
+    pygame.draw.rect(plate, (255, 255, 255, 16), body, border_radius=radius)
+    pygame.draw.rect(plate, (255, 255, 255, 78), body, width=1, border_radius=radius)
+    screen.blit(plate, rect.topleft)
+
+
+def draw_relic_glow(screen: pygame.Surface, rect: pygame.Rect) -> None:
+    pad = 5
+    plate = pygame.Surface((max(1, rect.w + pad * 2), max(1, rect.h + pad * 2)), pygame.SRCALPHA)
+    pygame.draw.rect(plate, (232, 196, 96, 150), plate.get_rect(), width=2, border_radius=10)
+    screen.blit(plate, (rect.x - pad, rect.y - pad))
 
 
 def draw_button(
@@ -83,8 +99,8 @@ def _blit_text(
 
 
 def draw_background(screen: pygame.Surface, assets: AssetManager) -> None:
-    surface, origin = assets.cover("background", screen.get_width(), screen.get_height())
-    screen.blit(surface, origin)
+    wood_swirl.ensure(assets.root / "backgrounds" / "wood_swirl.png")
+    wood_swirl.draw(screen)
 
 
 def draw_header_and_status(
@@ -203,9 +219,6 @@ def draw_debug(screen: pygame.Surface, game: Game, layout: Layout) -> None:
     for surface in rendered:
         panel.blit(surface, (14, y))
         y += surface.get_height() + 4
-    x = layout.frame.right + 18
-    y_pos = layout.frame.top
-    if x + width > screen.get_width() - 8:
-        x = 12
-        y_pos = 12
+    x = layout.left.x + 10
+    y_pos = max(layout.left.y + 150, layout.menu.y - height - 12)
     screen.blit(panel, (x, y_pos))

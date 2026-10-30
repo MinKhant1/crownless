@@ -10,7 +10,7 @@ From the project folder:
 .\.venv\Scripts\python.exe main.py
 ```
 
-The window opens at 1280×900 and can be resized. Art is loaded from paths next to `main.py`, so the working directory does not matter.
+The window opens at 1440×900 and can be resized. 1280×720 is supported. Art is loaded from paths next to `main.py`, so the working directory does not matter.
 
 ## Tests
 
@@ -22,10 +22,24 @@ The window opens at 1280×900 and can be resized. Art is loaded from paths next 
 
 1. A new run starts with one pawn, knight, bishop, rook, queen, and king, plus 5 gold.
 2. Level preview shows the enemy formation.
-3. Deployment places your pieces on ranks 1 and 2. The king is required and does not use an army slot. Other pieces share the army capacity, which starts at 5.
+3. Deploy fills ranks 1 and 2 from the army. The king is always included and does not use an army slot. Other pieces fill the army capacity, which starts at 5. Survivors keep the squares you chose last battle. The battle screen is three columns: battle status on the left, the board in the center, and your army on the right. You can swap pieces, replace one from the reserve, or press Reset Formation before Start Battle.
 4. Battle is fought by hand for both sides. Clear every enemy piece to win. If your king is captured, the run ends.
-5. A win awards 3 gold, then opens the shop. Continue starts the next level.
-6. After level 5, the run is complete.
+5. A win awards 3 gold and keeps the board up. A level-complete banner shows the reward, then Continue slides the board off to the left while the shop slides in from the right.
+6. The shop Continue button slides the shop away and brings in the next level, with that enemy army already on the board.
+7. Starting the battle keeps the board where it is and shows a short Battle Start banner.
+8. After level 5, Continue fades to the run-complete screen instead of another shop. Losing the king shows Game Over.
+
+## Scene changes
+
+Scene changes are animated in the normal frame loop. Nothing waits on a timer. `game/scene_manager.py` asks `game/transitions/transition_manager.py` to slide or fade the outgoing scene and the incoming scene together. The dark brown background stays still. The board, pieces, relic row, and the left and right panels move as one group. The shop slides in as that group slides away. Shop cards follow the shop, with a short stagger. Clicks are ignored until the new scene has settled, then the shop cards use their normal hit boxes.
+
+The timings live in `config/settings.py`:
+
+- `VICTORY_BANNER_TIME` and `VICTORY_REWARD_TIME` — the level-complete banner
+- `SCENE_SLIDE_TIME` — battle into the shop
+- `SHOP_CARD_STAGGER` — delay between shop cards
+- `LEVEL_PREVIEW_TIME` — shop into the next level
+- `BATTLE_START_TIME` — the battle-start banner
 
 ## Shop
 
@@ -140,7 +154,7 @@ A special piece is a normal chess piece with one extra trait. The trait is store
 - Golden — Earn +2 Gold if this piece survives the battle. The bonus is added once, with the normal victory gold, and the result screen shows both amounts. A captured or removed Golden piece pays nothing. Opening the result screen again does not pay again.
 - Ghost — Temporary piece. Disappears after battle. It can move and capture, then it is taken off the board after the other end-of-battle rewards, and it does not return to the army.
 - Wooden — A piece that captures this cannot move for 2 turns. The capture turn does not count, and the other side's turns do not count. The locked piece cannot be selected. It can still be captured. A small lock is drawn on it. The lock is a status, separate from the Wooden trait, and it is dropped if that piece leaves the board.
-- Wanted — Effect coming soon. A dark red crosshair is drawn behind the piece.
+- Wanted — Effect coming soon. A bright red crosshair is drawn behind the piece.
 - Explosive — Effect coming soon. The piece is tinted and marked. It does not explode.
 
 ### Architecture
@@ -169,9 +183,26 @@ Add a `TraitDef` in `game/traits/trait_registry.py`. Add `game/traits/effects/<i
 
 ### Overlays
 
-The files in `assets/pieces/normal/` stay as they are. A trait is the normal picture plus a tint or a few shapes. Golden uses a warm tint and a thin outline. Wanted keeps the original colors and draws a crosshair behind the piece, inside the square. Explosive adds a red tint, small cracks, and a tiny bomb mark. Ghost draws the piece at about 60% opacity with a pale tint. Wooden adds a brown tint and a few grain strokes. Tinted copies are cached by color, piece type, trait, and size. Resizing the window clears that cache. Overlays are drawn with the board and do not take mouse clicks.
+The files in `assets/pieces/normal/` stay as they are. Each special piece is the normal picture plus three readable layers: a tint or texture on the piece, a colored ring on the square, and a small badge in the top-right corner. Golden is a strong gold tint with a gold outline, a gold ring, and a star. Wanted keeps the original colors, with a thick red crosshair, a crimson ring, and a target badge. Explosive is an orange-red tint with crack lines, an orange ring, and a bomb badge. Ghost is a pale cyan piece at about 78% opacity, with a cyan outline, a blue ring, and a small orb. Wooden is a darker brown tint with grain lines, a brown ring, and a small log mark. There is no crown, cloak, smoke, chain, or explosion aura.
 
-The board is drawn as squares, then highlights, then each piece's shadow, then anything behind the piece, then legal-move marks, then the pieces, then the hover or selection outline. The selected piece is drawn after that outline so it sits above the board. Locks are drawn last. Hovering a special piece shows its name and effect beside the square.
+Tinted copies are cached by color, piece type, trait, size, and whether high readability is on. Resizing the window clears that cache. The ring stays on the square with the shadow. The tint, crosshair, cracks, and badge rise with the piece. Hovering a special piece shows its name in the trait color and its effect beside the square. `TRAIT_HIGH_READABILITY` in `config/settings.py` starts in the stronger look. Press F6 to switch to the quieter look and back.
+
+## Board depth
+
+The board stays on the same squares the mouse already uses. Depth is drawn around that grid. A soft shadow sits down and to the right of the frame. A dark lip along the lower edge gives the frame thickness. Each square keeps its existing art and gets a light top-left edge, a dark bottom-right edge, and a faint sheen. The opening inside the frame is shaded so the tiles look set into the wood. The original frame picture is not changed.
+
+A selected square is an inset gold ring with a slow glow, not a flat box. Empty-move dots sit on the tile with a small contact shadow. Capture marks are inset on the square. Piece shadows and trait rings are drawn after those marks, and the lifted piece is drawn last.
+
+Tune the depth in `config/settings.py`:
+
+- `BOARD_SHADOW_OFFSET_X`, `BOARD_SHADOW_OFFSET_Y`, `BOARD_SHADOW_ALPHA` — the shadow under the board
+- `BOARD_THICKNESS` — the dark lip on the lower frame
+- `BOARD_RECESS` — how deep the tile opening looks
+- `BOARD_BEVEL` — the inner tile edge
+- `BOARD_HIGHLIGHT`, `BOARD_SHADE` — upper-left light and lower-right shade
+- `BOARD_SELECT_GLOW` — the selected-square ring
+
+The board is drawn as the shadow, the lower lip, the tiles, the frame, the recess, then the move marks, then piece shadows and rings, then the pieces. The selected piece is drawn last. Locks are drawn after that. Hovering a special piece shows its name and effect beside the square. Square positions are unchanged, so clicks still land on the same tiles. Cached edges are cleared when the window is resized.
 
 ## Piece miniatures
 
@@ -196,6 +227,12 @@ The feel is configured in `config/settings.py`:
 
 Press F4. The trait menu stays closed during a normal game. While it is open, click a piece on the board or in the army tray, then click a trait, or None to clear it. The overlay updates immediately. Those clicks assign traits instead of moving or deploying until you press F4 again.
 
+### Trait visual test
+
+`SPECIAL_PIECE_VISUAL_TEST` in `config/settings.py` is off, so a new launch starts the campaign. Press F7 to open a temporary board. The white pieces are a Golden pawn, a Wanted knight, an Explosive bishop, a Ghost rook, a Wooden queen, and a normal king. Every black piece stays normal. Rank 1 already alternates light and dark squares, and the pieces can move onto either color.
+
+The board is a copy. Traits are assigned with `TraitManager` onto those copies. The army, gold, relics, and saved run are left alone. Leaving the test returns to the normal run. Press F7 to turn the test off, or to turn it back on with a fresh formation. F4 still edits traits on the pieces you are looking at. Hover a piece to read its name and effect. F6 compares the strong and quiet overlay styles.
+
 ## Controls
 
 - Shop: click Buy on a card, click the reroll board, or click Continue.
@@ -206,6 +243,8 @@ Press F4. The trait menu stays closed during a normal game. While it is open, cl
 - F3 toggles the battle debug overlay.
 - F4 opens the trait menu. Click a piece, then a trait. None clears it. Press F4 again to close the menu and return to normal play.
 - F5 draws piece shadow bounds and anchors. Press it again to hide them.
+- F6 switches special-piece overlays between the strong readable look and the quieter look.
+- F7 turns the special-piece visual test on or off. Turning it on builds a fresh temporary board and does not change the army.
 - Debug Win and Debug Loss end the current fight so the reward and run-over screens can be tried early.
 
 ## Rules

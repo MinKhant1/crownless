@@ -1,3 +1,33 @@
-from game.relics.effects import blood_contract, conversion, gold_charm, recruitment
+from game.relics.effects import (
+    banner,
+    blood_contract,
+    castle_wall,
+    chain_fuse,
+    collectors_crown,
+    conversion,
+    crowns_blessing,
+    first_blood,
+    flawless_victory,
+    gold_charm,
+    graveyard,
+    recruitment,
+    royal_promotion,
+    squire,
+)
 
-__all__ = ["blood_contract", "conversion", "gold_charm", "recruitment"]
+__all__ = [
+    "banner",
+    "blood_contract",
+    "castle_wall",
+    "chain_fuse",
+    "collectors_crown",
+    "conversion",
+    "crowns_blessing",
+    "first_blood",
+    "flawless_victory",
+    "gold_charm",
+    "graveyard",
+    "recruitment",
+    "royal_promotion",
+    "squire",
+]

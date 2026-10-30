@@ -20,9 +20,11 @@ class ShopManager:
         self.relic_id: str | None = None
         self.relic_sold = False
         self.relic_enabled = False
+        self.offer_serial = 0
         self.roll()
 
     def roll(self, owned_ids: set[str] | None = None) -> None:
+        self.offer_serial = getattr(self, "offer_serial", 0) + 1
         self.piece_kind = self.rng.choice(SHOP_PIECE_KINDS)
         self.piece_sold = False
         self.army_sold = False

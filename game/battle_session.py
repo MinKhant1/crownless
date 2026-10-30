@@ -40,8 +40,14 @@ class BattleSession:
         self.game.on_board_click(col, row)
         self.evaluate()
         if self.outcome is None and self.game.pending_turn:
-            self.game.turns.complete_move(self.game.board)
-            self.game.pending_turn = False
+            if self.game.hold_turn:
+                self.game.hold_turn = False
+                self.game.pending_turn = False
+            else:
+                self.game.bonus_piece_id = None
+                self.game.turns.complete_move(self.game.board)
+                self.game.pending_turn = False
+                self.game.relic_flashes.clear()
 
     def evaluate(self) -> None:
         if self.outcome is not None:

@@ -2,6 +2,15 @@ from config.settings import BOARD_SIZE, DEPLOY_ROWS
 from game.army_manager import ArmyManager
 from game.piece import Piece
 
+KIND_HOMES: dict[str, tuple[tuple[int, int], ...]] = {
+    "king": ((3, 1), (2, 1), (4, 1), (1, 1), (5, 1), (0, 1), (3, 2), (2, 2), (4, 2), (1, 2), (5, 2), (0, 2)),
+    "queen": ((2, 1), (4, 1), (3, 2), (2, 2), (4, 2), (1, 1), (5, 1), (0, 1)),
+    "rook": ((0, 1), (5, 1), (0, 2), (5, 2), (1, 1), (4, 1)),
+    "bishop": ((1, 1), (4, 1), (2, 1), (3, 1), (1, 2), (4, 2)),
+    "knight": ((1, 1), (4, 1), (0, 2), (5, 2), (2, 1), (3, 1)),
+    "pawn": ((0, 2), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2), (0, 1), (5, 1)),
+}
+
 
 class DeploymentManager:
     def __init__(self) -> None:
@@ -75,6 +84,17 @@ class DeploymentManager:
 
     def remove(self, piece_id: int) -> None:
         self.placed.pop(piece_id, None)
+
+    def swap(self, piece_a_id: int, piece_b_id: int) -> bool:
+        if piece_a_id == piece_b_id:
+            return False
+        if piece_a_id not in self.placed or piece_b_id not in self.placed:
+            return False
+        first = self.placed[piece_a_id]
+        second = self.placed[piece_b_id]
+        self.placed[piece_a_id] = second
+        self.placed[piece_b_id] = first
+        return True
 
     def ready(self, army: ArmyManager) -> bool:
         king = army.king()

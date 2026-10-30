@@ -130,11 +130,6 @@ class RelicOverlay:
     def draw(self, screen: pygame.Surface, assets: AssetManager, run: RunState, shop: ShopLayout | None) -> None:
         window = screen.get_size()
         draw_button(screen, self.button_rect(window), "Relics", font_size=18)
-        if self.shop_hover and shop is not None and run.shop.relic_id:
-            definition = relic_by_id(run.shop.relic_id)
-            if definition is not None:
-                preview = pygame.Rect(24, 70, 280, 460)
-                CARD_RENDERER.draw(screen, assets, definition, preview, hovered=True)
         if not self.open:
             return
         shade = pygame.Surface(window, pygame.SRCALPHA)

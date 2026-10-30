@@ -348,7 +348,8 @@ class RelicTests(unittest.TestCase):
         self.assertTrue(run.start_battle())
         run.battle.evaluate()
         run.finish_victory()
-        self.assertEqual(run.gold, 4 + 1 + 3)
+        bonus = 3 if run.relics.owns("flawless_victory") else 0
+        self.assertEqual(run.gold, 4 + 1 + 3 + bonus)
 
     def _capture(self, run, capturer_id, kind, captured_kind, origin, destination) -> None:
         run.relics.dispatcher.publish(

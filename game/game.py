@@ -35,6 +35,9 @@ class Game:
         self.hover: tuple[int, int] | None = None
         self.statuses: dict = {}
         self.debug = False
+        self.hold_turn = False
+        self.bonus_piece_id: int | None = None
+        self.relic_flashes: list = []
         self.current_level = CURRENT_LEVEL
         self.army_size = ARMY_SIZE
         self.army_capacity = ARMY_CAPACITY

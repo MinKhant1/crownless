@@ -13,6 +13,7 @@ class BattleRules:
         self.locks: dict[int, int] = {}
         self.fresh: set[int] = set()
         self.statuses: dict[int, StatusEffect] = {}
+        self.capture_blocks: list = []
         self._board = lambda: None
 
     def bind(self, board_getter) -> None:
@@ -36,6 +37,8 @@ class BattleRules:
             if piece is None:
                 continue
             if self.locks.get(piece.id, 0) > 0:
+                continue
+            if any(block(board, move) for block in self.capture_blocks):
                 continue
             allowed.append(move)
         return allowed

@@ -97,6 +97,11 @@ class TraitDebug:
 
 
 def _piece_at(run: RunState, square: tuple[int, int]) -> Piece | None:
+    if run.visual_pieces is not None:
+        for piece in run.visual_pieces:
+            if (piece.col, piece.row) == square:
+                return piece
+        return None
     if run.phase == "battle" and run.battle is not None:
         return run.battle.game.board.piece_at(*square)
     for enemy in run.enemies:
@@ -110,6 +115,11 @@ def _piece_at(run: RunState, square: tuple[int, int]) -> Piece | None:
 
 def _piece_by_id(run: RunState, piece_id: int | None) -> Piece | None:
     if piece_id is None:
+        return None
+    if run.visual_pieces is not None:
+        for piece in run.visual_pieces:
+            if piece.id == piece_id:
+                return piece
         return None
     if run.battle is not None:
         live = run.battle.game.board.piece_by_id(piece_id)

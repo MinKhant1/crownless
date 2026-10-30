@@ -28,13 +28,23 @@ class AssetManager:
                 key = f"{color}_{kind}"
                 self._raw[key] = pygame.image.load(pieces / f"{key}.png").convert_alpha()
         self._load_optional(self.root / "relics" / "card_background.png", "relic_card")
+        self._load_optional(self.root / "relics" / "back_card.png", "relic_back")
         art = self.root / "relics" / "art"
         if art.exists():
             for path in art.glob("*.png"):
                 self._load_optional(path, f"relic_art_{path.stem}")
+        fronts = self.root / "relics"
+        if fronts.exists():
+            for path in fronts.glob("*.png"):
+                if path.stem in ("back_card", "card_background"):
+                    continue
+                self._load_optional(path, f"relic_front_{path.stem}")
 
     def has(self, key: str) -> bool:
         return key in self._raw
+
+    def get(self, key: str) -> pygame.Surface:
+        return self._raw[key]
 
     def _load_optional(self, path: Path, key: str) -> None:
         if path.exists():
