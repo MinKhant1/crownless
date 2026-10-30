@@ -42,7 +42,7 @@ def handle_battle_click(run: RunState, pos: tuple[int, int], layout: Layout, win
         run.finish_defeat()
 
 
-def draw_battle(screen: pygame.Surface, assets: AssetManager, run: RunState, layout: Layout) -> None:
+def draw_battle(screen: pygame.Surface, assets: AssetManager, run: RunState, layout: Layout, relic_bar=None) -> None:
     session = run.battle
     if session is None:
         return
@@ -52,7 +52,7 @@ def draw_battle(screen: pygame.Surface, assets: AssetManager, run: RunState, lay
     game.army_size = sum(1 for piece in game.board.pieces if piece.color == "white" and piece.kind != "king")
     if session.rules is not None:
         game.statuses = session.rules.statuses
-    render_battle(screen, assets, game, layout)
+    render_battle(screen, assets, game, layout, relic_bar=relic_bar, run=run)
     _blit_text(
         screen,
         f"Gold  {run.gold}",

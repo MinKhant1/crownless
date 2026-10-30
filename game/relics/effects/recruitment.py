@@ -1,4 +1,4 @@
-from game.relics.events import CAPTURE_RESOLVED
+from game.relics.events import CAPTURE_RESOLVED, visual_trigger
 from game.relics.relic_registry import register_effect
 
 
@@ -23,4 +23,6 @@ class RecruitmentEffect:
         if self.context is None:
             return
         origin = payload["origin_square"]
-        self.context.spawn_ally(payload["captured_piece_type"], origin[0], origin[1], None)
+        spawned = self.context.spawn_ally(payload["captured_piece_type"], origin[0], origin[1], None)
+        if spawned is not None:
+            visual_trigger(self.context.dispatcher, self.owned.instance_id)

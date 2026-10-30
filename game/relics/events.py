@@ -12,6 +12,16 @@ BATTLE_END = "battle_end"
 SHOP_ENTER = "shop_enter"
 RELIC_ACQUIRED = "relic_acquired"
 RELIC_ACTIVATED = "relic_activated"
+RELIC_VISUAL_TRIGGER = "relic_visual_trigger"
+
+
+def visual_trigger(dispatcher, instance_id: str) -> None:
+    dispatcher.publish(
+        GameEvent(
+            RELIC_VISUAL_TRIGGER,
+            {"type": "RELIC_VISUAL_TRIGGER", "relic_instance_id": instance_id},
+        )
+    )
 
 
 @dataclass(frozen=True)

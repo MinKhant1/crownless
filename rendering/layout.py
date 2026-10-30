@@ -19,10 +19,12 @@ from config.settings import (
     LAYOUT_HEADER_WIDTH,
     LAYOUT_RANK_GUTTER,
     LAYOUT_SIDE_PAD,
-    LAYOUT_STATUS_FRAME_GAP,
     LAYOUT_TOP_PAD,
     LAYOUT_TURN_H,
+    RELIC_BAR_PAD,
+    RELIC_CARD_HEIGHT,
     STATUS_SOURCE,
+    WINDOW_HEIGHT,
 )
 
 
@@ -36,6 +38,7 @@ class Layout:
     square: int
     crown: pygame.Rect
     turn: pygame.Rect
+    relics: pygame.Rect
 
     def square_rect(self, col: int, row: int) -> pygame.Rect:
         screen_row = BOARD_SIZE - row
@@ -77,17 +80,21 @@ def layout_for_status_width(window_w: int, window_h: int, status_w: int) -> Layo
         status_w,
         status_h,
     )
-    frame = pygame.Rect(
-        origin_x + (block_w - frame_size) // 2,
-        status.bottom + LAYOUT_STATUS_FRAME_GAP,
-        frame_size,
-        frame_size,
-    )
+    frame_x = origin_x + (block_w - frame_size) // 2
+    band_h = _relic_band_height(window_h)
+    relics = pygame.Rect(frame_x, status.bottom + 4, frame_size, band_h)
+    frame = pygame.Rect(frame_x, relics.bottom + 6, frame_size, frame_size)
     crown = pygame.Rect(0, 0, crown_w, crown_h)
     crown.midbottom = (header.centerx, header.bottom)
     board, square = _board_inside(frame)
     turn = pygame.Rect(0, frame.bottom + LAYOUT_FILE_LABEL_H, window_w, LAYOUT_TURN_H)
-    return Layout((window_w, window_h), header, status, frame, board, square, crown, turn)
+    return Layout((window_w, window_h), header, status, frame, board, square, crown, turn, relics)
+
+
+def _relic_band_height(window_h: int) -> int:
+    scale = window_h / WINDOW_HEIGHT
+    card_h = max(64, min(RELIC_CARD_HEIGHT, int(round(RELIC_CARD_HEIGHT * scale))))
+    return card_h + RELIC_BAR_PAD
 
 
 def layout_fits(layout: Layout, window_w: int, window_h: int) -> bool:

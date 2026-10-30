@@ -1,4 +1,4 @@
-from game.relics.events import BATTLE_END
+from game.relics.events import BATTLE_END, visual_trigger
 from game.relics.relic_registry import register_effect
 
 
@@ -21,3 +21,4 @@ class GoldCharmEffect:
             return
         bonus = int(self.definition.parameters.get("gold", 1))
         self.context.run.gold += bonus
+        visual_trigger(self.context.dispatcher, self.owned.instance_id)

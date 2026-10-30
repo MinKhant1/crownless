@@ -8,9 +8,11 @@ from rendering.layout import Layout
 from rendering.piece_renderer import draw_pieces
 
 
-def render_battle(screen: pygame.Surface, assets: AssetManager, game: Game, layout: Layout) -> None:
+def render_battle(screen: pygame.Surface, assets: AssetManager, game: Game, layout: Layout, relic_bar=None, run=None) -> None:
     draw_background(screen, assets)
     draw_header_and_status(screen, assets, game, layout)
+    if relic_bar is not None and run is not None:
+        relic_bar.draw_cards(screen, assets, run, layout)
     draw_board(screen, assets, layout)
     draw_labels(screen, layout)
     draw_pieces(screen, assets, game, layout)

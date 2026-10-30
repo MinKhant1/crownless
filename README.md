@@ -71,13 +71,30 @@ Hooks in use:
 - `shop_enter`
 - `relic_acquired`
 - `relic_activated`
+- `relic_visual_trigger`
+
+### Relic row
+
+Owned relics sit in a row above the chessboard during deployment and battle, in the order they were acquired. The row uses the same parchment cards and artwork as the collection. An empty row says "No Relics".
+
+Up to five cards are visible. Further relics stay owned and keep working; the mouse wheel over the row, or the arrows at the ends, scrolls them into view.
+
+Hovering a card lifts it and shows its name, saying, and effect. Left-click opens a larger card. Right-click, or Close, dismisses it. Blood Contract shows an Activate button there when it can still be used, and the click is passed to the relic manager. Passive relics have no Activate button.
+
+A relic that can be activated and is not currently allowed is desaturated. A spent Blood Contract, or a Conversion that has already triggered this battle, is darkened and marked with a check. When a relic actually triggers, it publishes `relic_visual_trigger` and its card flashes gold. That flash is only visual. The effect has already resolved.
+
+```python
+from game.relics.events import visual_trigger
+
+visual_trigger(dispatcher, owned.instance_id)
+```
 
 ### Adding a relic
 
 `GoldCharmEffect` in `game/relics/effects/gold_charm.py` is a complete extra relic. It is registered and defined, and `in_shop` is false, so the shop does not sell it. To sell a new relic, add a `RelicDef` with `in_shop=True` and an effect class:
 
 ```python
-from game.relics.events import BATTLE_END
+from game.relics.events import BATTLE_END, visual_trigger
 from game.relics.relic_registry import register_effect
 
 
@@ -96,6 +113,7 @@ class GoldCharmEffect:
         if event.payload.get("outcome") != "victory" or self.context is None:
             return
         self.context.run.gold += int(self.definition.parameters.get("gold", 1))
+        visual_trigger(self.context.dispatcher, self.owned.instance_id)
 ```
 
 Import the module from `game/relics/effects/__init__.py` so the decorator runs. Give the relic a stable id. Gameplay code should use that id, not the display name. Do not use `eval` or `exec`.
@@ -153,7 +171,26 @@ Add a `TraitDef` in `game/traits/trait_registry.py`. Add `game/traits/effects/<i
 
 The files in `assets/pieces/normal/` stay as they are. A trait is the normal picture plus a tint or a few shapes. Golden uses a warm tint and a thin outline. Wanted keeps the original colors and draws a crosshair behind the piece, inside the square. Explosive adds a red tint, small cracks, and a tiny bomb mark. Ghost draws the piece at about 60% opacity with a pale tint. Wooden adds a brown tint and a few grain strokes. Tinted copies are cached by color, piece type, trait, and size. Resizing the window clears that cache. Overlays are drawn with the board and do not take mouse clicks.
 
-The board is drawn as squares, then highlights, then legal-move marks, then anything behind the piece, then the tinted piece, then marks in front of it, then the lock, then the hover or selection outline. Hovering a special piece shows its name and effect beside the square.
+The board is drawn as squares, then highlights, then each piece's shadow, then anything behind the piece, then legal-move marks, then the pieces, then the hover or selection outline. The selected piece is drawn after that outline so it sits above the board. Locks are drawn last. Hovering a special piece shows its name and effect beside the square.
+
+## Piece miniatures
+
+Board pieces are drawn as small tabletop figures on top of the existing artwork. The files in `assets/pieces/normal/` are not modified. Each piece gets a soft shadow on its square, a little shading along the base, and a faint highlight. Idle pieces stay on the board. `PIECE_IDLE_BOB` is 0, so they do not bob unless you raise it.
+
+Selecting a piece lifts it, grows it slightly, and tilts it a few degrees. The shadow stays on the square, and it gets wider and softer while the piece is up. The piece bobs a little until you let go. Clicking it again, or clicking off it, eases it back down. A move carries it from that raised spot onto the destination square, then it settles. The motion is timed from the clock, so it stays smooth when the frame rate changes. It does not delay the move, and it does not change what is legal.
+
+The same lift is used for normal pieces and for Golden, Wanted, Explosive, Ghost, and Wooden pieces. Ghost pieces stay pale. Dragging a piece off the army tray holds that figure above the cursor. Press F5 to draw each shadow outline and the square anchor while tuning.
+
+The feel is configured in `config/settings.py`:
+
+- `PIECE_LIFT_RATIO`, `PIECE_LIFT_MIN`, `PIECE_LIFT_MAX` — how high a selected piece rises
+- `PIECE_SELECT_SCALE` — how much it grows while held
+- `PIECE_TILT` — the lean, in degrees
+- `PIECE_BOB_AMPLITUDE`, `PIECE_BOB_SPEED` — the float while it is held
+- `PIECE_EASE_RATE` — how quickly it rises and settles
+- `PIECE_SHADOW_ALPHA`, `PIECE_SHADOW_WIDTH`, `PIECE_SHADOW_HEIGHT`, `PIECE_SHADOW_LIFT_SPREAD`, `PIECE_SHADOW_OFFSET` — the contact shadow
+- `PIECE_TRAVEL_TIME` — how long a move takes to reach the destination square
+- `PIECE_IDLE_BOB` — resting motion, left at 0
 
 ### Trying traits
 
@@ -164,9 +201,11 @@ Press F4. The trait menu stays closed during a normal game. While it is open, cl
 - Shop: click Buy on a card, click the reroll board, or click Continue.
 - Deployment: click a piece in the army, then click a highlighted square. Click a deployed piece again to take it back. You can also drag a piece onto a square. Start Battle begins the fight once the king is deployed.
 - Battle: click a piece of the side to move, then a highlighted square. Green dots are empty squares. Red outlines are captures. Both sides use the mouse.
-- Relics opens the collection. Activate Blood Contract there before the battle, choose a piece, and confirm.
+- Relics opens the collection. The owned relics also sit above the board. Hover a card for its text, left-click it for a closer look, and right-click to close that view. Activate Blood Contract from that card, or from the collection, before the battle.
+- The mouse wheel over the relic row scrolls when more than five relics are owned.
 - F3 toggles the battle debug overlay.
 - F4 opens the trait menu. Click a piece, then a trait. None clears it. Press F4 again to close the menu and return to normal play.
+- F5 draws piece shadow bounds and anchors. Press it again to hide them.
 - Debug Win and Debug Loss end the current fight so the reward and run-over screens can be tried early.
 
 ## Rules

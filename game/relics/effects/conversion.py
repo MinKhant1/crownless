@@ -1,4 +1,4 @@
-from game.relics.events import BATTLE_START, CAPTURE_RESOLVED
+from game.relics.events import BATTLE_START, CAPTURE_RESOLVED, visual_trigger
 from game.relics.relic_registry import register_effect
 
 
@@ -33,7 +33,7 @@ class ConversionEffect:
             return
         destination = payload["destination_square"]
         options = self.context.empty_neighbors(destination[0], destination[1])
-        if not options:
-            return
-        col, row = self.context.rng.choice(options)
-        self.context.spawn_ally(payload["captured_piece_type"], col, row, "ghost")
+        if options:
+            col, row = self.context.rng.choice(options)
+            self.context.spawn_ally(payload["captured_piece_type"], col, row, "ghost")
+        visual_trigger(self.context.dispatcher, self.owned.instance_id)

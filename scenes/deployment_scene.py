@@ -196,15 +196,18 @@ class DeploymentScene:
         self.dragging = False
         self.drag_pos = None
 
-    def draw(self, screen: pygame.Surface, assets: AssetManager, run: RunState, layout: Layout) -> None:
+    def draw(self, screen: pygame.Surface, assets: AssetManager, run: RunState, layout: Layout, relic_bar=None) -> None:
         window = screen.get_size()
         game = self.display_game(run)
         hud = _Hud(run.level, game.army_size, game.army_capacity)
         draw_background(screen, assets)
         draw_header_and_status(screen, assets, hud, layout)
+        if relic_bar is not None:
+            relic_bar.draw_cards(screen, assets, run, layout)
         draw_board(screen, assets, layout)
         draw_labels(screen, layout)
-        draw_pieces(screen, assets, game, layout)
+        skip = self.press_id if self.dragging else None
+        draw_pieces(screen, assets, game, layout, skip_id=skip)
         draw_crown(screen, assets, layout)
         left, tray, button = self.panels(window, layout)
         self._draw_panel(screen, run, left, button)
@@ -214,12 +217,15 @@ class DeploymentScene:
         if self.dragging and self.press_id is not None and self.drag_pos is not None:
             piece = run.army.piece_by_id(self.press_id)
             if piece is not None:
+                held = pygame.Rect(0, 0, layout.square, layout.square)
+                held.center = self.drag_pos
                 draw_trait_sprite(
                     screen,
                     assets,
                     piece,
-                    pygame.Rect(0, 0, layout.square, layout.square).move(self.drag_pos[0] - layout.square // 2, self.drag_pos[1] - layout.square // 2),
+                    held,
                     int(layout.square * 0.84),
+                    lift=max(8, layout.square * 0.14),
                 )
 
     def _draw_panel(self, screen: pygame.Surface, run: RunState, panel: pygame.Rect, button: pygame.Rect) -> None:

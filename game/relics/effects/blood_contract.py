@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from game.relics.events import RELIC_ACTIVATED, GameEvent
+from game.relics.events import RELIC_ACTIVATED, GameEvent, visual_trigger
 from game.relics.relic_registry import register_effect
 from game.traits import TRAIT_IDS
 
@@ -68,6 +68,7 @@ class BloodContractEffect:
         context.dispatcher.publish(
             GameEvent(RELIC_ACTIVATED, {"relic_id": self.definition.id, "instance_id": self.owned.instance_id})
         )
+        visual_trigger(context.dispatcher, self.owned.instance_id)
         return ActivationResult(
             True,
             "The contract is signed.",

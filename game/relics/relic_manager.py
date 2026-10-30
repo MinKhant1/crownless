@@ -42,6 +42,18 @@ class RelicManager:
                 return item
         return None
 
+    def can_activate(self, instance_id: str) -> tuple[bool, str]:
+        effect = self._effects.get(instance_id)
+        if effect is None or not hasattr(effect, "can_activate"):
+            return False, ""
+        return effect.can_activate(self.context)
+
+    def activate(self, instance_id: str, piece_id: int | None = None):
+        effect = self._effects.get(instance_id)
+        if effect is None or not hasattr(effect, "activate"):
+            return None
+        return effect.activate(self.context, piece_id)
+
     def effect_for(self, relic_id: str):
         owned = self.find(relic_id)
         if owned is None:
