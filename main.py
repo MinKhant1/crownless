@@ -23,7 +23,9 @@ from rendering.overlay_renderer import draw_trait_tooltip
 from rendering.relic_bar_renderer import RelicBar
 from rendering.relic_flip import shop_reveal
 from rendering.relic_preview import RelicPreviewModal
+from rendering.collection_overlay import collection_overlay
 from rendering.shop_layout import build_shop_layout
+from rendering.shop_offers import shop_offers
 from rendering.shop_piece_hand import shop_piece
 from rendering.shop_relic_hand import shop_hand
 from rendering.wood_swirl import wood_swirl
@@ -83,7 +85,7 @@ def main() -> None:
     while running:
         window = screen.get_size()
         board_layout = build_layout(*window)
-        shop_layout = build_shop_layout(*window)
+        shop_layout = build_shop_layout(*window, board_layout.left.right + 12)
         relic_bar.bind(run)
         if relics.open:
             relic_bar.close_detail()
@@ -167,10 +169,15 @@ def main() -> None:
             elif event.type == pygame.MOUSEMOTION:
                 held = bool(event.buttons[0])
                 if run.phase == "shop":
-                    shop_piece.on_motion(run, event.pos, shop_layout, window, held=held)
-                    shop_hand.on_motion(run, event.pos, shop_layout, window, held=held)
-                    if shop_piece.claims(event.pos, run, shop_layout, window) and not shop_hand.dragging:
-                        shop_hand.hovered_card_id = None
+                    if collection_overlay.blocks(run):
+                        collection_overlay.on_motion(event.pos, run, window)
+                    else:
+                        shop_piece.on_motion(run, event.pos, shop_layout, window, held=held)
+                        shop_hand.on_motion(run, event.pos, shop_layout, window, held=held)
+                        shop_offers.on_motion(run, event.pos, shop_layout)
+                        if shop_piece.claims(event.pos, run, shop_layout, window) and not shop_hand.dragging:
+                            shop_hand.hovered_card_id = None
+                            shop_offers.hovered = None
                 else:
                     shop_hand.hovered_card_id = None
                     shop_piece.hovered = False
@@ -199,13 +206,18 @@ def main() -> None:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if gallery.open:
                     continue
-                if _board_phase(run) and screen_menu.on_press(board_layout, event.pos):
+                if run.phase == "shop" and collection_overlay.blocks(run):
+                    collection_overlay.on_left_down(event.pos, run, window)
+                    continue
+                if (_board_phase(run) or run.phase == "shop") and screen_menu.on_press(board_layout, event.pos):
                     continue
                 if run.phase in ("preview", "deployment", "battle") and relic_bar.on_left_down(event.pos, run, board_layout):
                     continue
                 if run.phase == "shop" and shop_piece.on_left_down(event.pos, run, shop_layout, window):
                     continue
                 if run.phase == "shop" and shop_hand.on_left_down(event.pos, run, shop_layout, window):
+                    continue
+                if run.phase == "shop" and shop_offers.on_left_down(event.pos, run, shop_layout):
                     continue
                 if trait_debug.hits(event.pos, board_layout, window, _trait_icons(deployment, run, window, board_layout)):
                     continue
@@ -219,7 +231,7 @@ def main() -> None:
                 if gallery.open:
                     gallery.on_click(event.pos, run, window)
                     continue
-                if _board_phase(run) and (screen_menu.press is not None or screen_menu.mode):
+                if (_board_phase(run) or run.phase == "shop") and (screen_menu.press is not None or screen_menu.mode):
                     action = screen_menu.on_release(event.pos, window, board_layout)
                     if action == "restart":
                         if visual_test.active:
@@ -254,14 +266,21 @@ def main() -> None:
                     if square is not None:
                         visual_test.game.on_board_click(*square)
                 elif run.phase == "shop":
-                    if shop_piece.on_left_up(event.pos, run, shop_layout, window):
+                    if collection_overlay.blocks(run):
+                        collection_overlay.on_left_up(event.pos, run, window)
                         continue
-                    if shop_hand.on_left_up(event.pos, run, shop_layout, window):
+                    piece_hit = shop_piece.on_left_up(event.pos, run, shop_layout, window)
+                    relic_hit = False if piece_hit else shop_hand.on_left_up(event.pos, run, shop_layout, window)
+                    offer_hit = False if piece_hit or relic_hit else shop_offers.on_left_up(event.pos, run, shop_layout)
+                    owner = "piece" if piece_hit else "relic" if relic_hit else "offer" if offer_hit else None
+                    _focus_shop(owner)
+                    if piece_hit or relic_hit or offer_hit:
                         continue
                     if handle_shop_click(run, event.pos, shop_layout) == "leave":
                         preview.dismiss()
                         shop_hand.clear()
                         shop_piece.clear()
+                        shop_offers.clear()
                         _leave_shop(scene, run, relic_bar)
                 elif run.phase in ("preview", "deployment"):
                     before = run.phase
@@ -297,6 +316,8 @@ def main() -> None:
         if run.phase == "shop":
             shop_piece.update(dt, run, shop_layout, window)
             shop_hand.update(dt, run, shop_layout, window)
+            shop_offers.update(dt, run, shop_layout)
+            collection_overlay.update(dt, run)
         elif shop_piece.dragging or shop_piece.armed:
             shop_piece.clear()
         if visual_test.active and visual_test.game is not None:
@@ -326,7 +347,15 @@ def main() -> None:
             and relic_bar.detail_id is None
             and (
                 (run.phase in ("preview", "deployment", "battle") and relic_bar.hover_id is not None)
-                or (run.phase == "shop" and (shop_hand.wants_hand(run, shop_layout, window) or shop_piece.wants(run, shop_layout, window)))
+                or (
+                    run.phase == "shop"
+                    and (
+                        shop_hand.wants_hand(run, shop_layout, window)
+                        or shop_piece.wants(run, shop_layout, window)
+                        or shop_offers.hovered is not None
+                        or collection_overlay.hover >= 0
+                    )
+                )
                 or (
                     run.phase == "victory"
                     and scene.result_ready()
@@ -341,6 +370,18 @@ def main() -> None:
         pygame.display.flip()
         dt = min(0.05, clock.tick(FPS) / 1000.0)
     pygame.quit()
+
+
+def _focus_shop(owner: str | None) -> None:
+    if owner == "piece" and shop_piece.selected:
+        shop_hand.selected_card_id = None
+        shop_offers.selected = None
+    elif owner == "relic" and shop_hand.selected_card_id is not None:
+        shop_piece.selected = False
+        shop_offers.selected = None
+    elif owner == "offer" and shop_offers.selected is not None:
+        shop_piece.selected = False
+        shop_hand.selected_card_id = None
 
 
 def _advance_enemy(run, scene, enemy_turn: EnemyTurn, dt: float, visual_test) -> None:

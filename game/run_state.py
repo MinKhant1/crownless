@@ -349,6 +349,40 @@ class RunState:
         self.notice = notice or ""
         return notice
 
+    def buy_relic_collection(self) -> str | None:
+        gold, notice = self.shop.buy_relic_collection(self.gold, self.shop.catalog, self.relics.owned_ids())
+        self.gold = gold
+        self.notice = notice or ""
+        return notice
+
+    def buy_piece_collection(self) -> str | None:
+        gold, notice = self.shop.buy_piece_collection(self.gold)
+        self.gold = gold
+        self.notice = notice or ""
+        return notice
+
+    def confirm_collection(self) -> str | None:
+        if self.shop.collection_open == "relic":
+            relic_id = self.shop.take_relic_choice()
+            if relic_id is None:
+                self.notice = "Choose a reward"
+                return self.notice
+            if self.relics.owns(relic_id):
+                self.notice = "Already owned"
+                return self.notice
+            self.relics.acquire(relic_id)
+            self.notice = ""
+            return None
+        if self.shop.collection_open == "piece":
+            kind = self.shop.take_piece_choice()
+            if kind is None:
+                self.notice = "Choose a reward"
+                return self.notice
+            self.army.create(kind)
+            self.notice = ""
+            return None
+        return None
+
     def reroll_shop(self) -> str | None:
         if self.shop_rerolls > 0:
             self.shop.roll(self.relics.owned_ids())

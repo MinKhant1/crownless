@@ -20,6 +20,8 @@ STARTING_NON_KING_CAPACITY = 5
 PIECE_PRICE = 5
 RELIC_PRICE = 7
 ARMY_UPGRADE_PRICE = 12
+RELIC_COLLECTION_PRICE = 15
+PIECE_COLLECTION_PRICE = 10
 REROLL_PRICE = 2
 VICTORY_GOLD = 3
 GOLDEN_BONUS = 2
@@ -36,6 +38,15 @@ DEPLOY_ROWS = (1, 2)
 ENEMY_ID_START = 10001
 
 SHOP_SOURCE = (1024, 1535)
+SHOP_BG_SOURCE = (1536, 1024)
+# Display bays on shop_bg.png, as fractions of the full image.
+SHOP_SLOT_FRACTIONS = {
+    "piece": (0.345, 0.198, 0.240, 0.145),
+    "relic": (0.610, 0.198, 0.250, 0.145),
+    "army_size": (0.338, 0.455, 0.168, 0.275),
+    "relic_collection": (0.522, 0.455, 0.168, 0.275),
+    "piece_collection": (0.706, 0.455, 0.168, 0.275),
+}
 CARD_SOURCE = (484, 479)
 PRICE_SOURCE = (379, 133)
 REROLL_SOURCE = (684, 385)
@@ -46,7 +57,7 @@ SHOP_CARD_GAP_FRAC = 0.028
 SHOP_CARD_CENTER_Y = 0.735
 SHOP_PRICE_GAP_FRAC = 0.008
 SHOP_BUY = (0.17, 0.755, 0.66, 0.16)
-SHOP_ICON = (0.22, 0.16, 0.56, 0.46)
+SHOP_ICON = (0.14, 0.06, 0.72, 0.58)
 SHOP_REROLL_WIDTH_FRAC = 0.52
 SHOP_REROLL_LABEL = (0.525, 0.34, 0.335, 0.32)
 SHOP_GOLD_WIDTH_FRAC = 0.42
@@ -145,9 +156,14 @@ HUD_FILES = {
 
 SHOP_FILES = {
     "shop_background": "shop_background.png",
+    "shop_bg": "shop_bg.png",
     "buying_square": "buying_square.png",
     "price_tag": "price_tag.png",
     "reroll_board": "reroll_board.png",
+}
+SHOP_OPTIONAL_FILES = {
+    "relic_chest": "relic_chest.png",
+    "piece_chest": "piece_chest.png",
 }
 
 ENEMY_FORMATIONS = {

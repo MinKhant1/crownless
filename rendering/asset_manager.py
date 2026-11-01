@@ -3,7 +3,7 @@ from pathlib import Path
 import pygame
 
 from ai.trait_definitions import TAG_FILES
-from config.settings import HUD_FILES, PIECE_KINDS, SHOP_FILES
+from config.settings import HUD_FILES, PIECE_KINDS, SHOP_FILES, SHOP_OPTIONAL_FILES
 
 
 class AssetManager:
@@ -23,6 +23,8 @@ class AssetManager:
             if key == "shop_background":
                 image = _drop_checkerboard(image)
             self._raw[key] = image
+        for key, filename in SHOP_OPTIONAL_FILES.items():
+            self._load_optional(shop / filename, key)
         pieces = self.root / "pieces" / "normal"
         for color in ("white", "black"):
             for kind in PIECE_KINDS:

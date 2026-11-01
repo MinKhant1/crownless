@@ -7,7 +7,24 @@ def battle_personality(seed: int, level: int) -> str:
     return random.Random(f"{seed}:{level}:battle-personality").choice(AI_TRAITS)
 
 
+def coming_battle(run) -> tuple[str, list] | None:
+    from config.settings import ENEMY_FORMATIONS, MAX_LEVEL
+    from game.level_manager import spawn_enemies
+
+    level = getattr(run, "level", 0) + 1
+    if level > MAX_LEVEL or level not in ENEMY_FORMATIONS:
+        return None
+    trait = battle_personality(run.seed, level)
+    enemies = spawn_enemies(level)
+    _stamp(enemies, trait)
+    return trait, enemies
+
+
 def current_enemy_trait(run) -> str | None:
+    if getattr(run, "phase", "") == "shop":
+        preview = coming_battle(run)
+        if preview is not None:
+            return preview[0]
     battle = getattr(run, "battle", None)
     trait = getattr(battle, "enemy_trait", None) if battle is not None else None
     if trait in AI_TRAITS:

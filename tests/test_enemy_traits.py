@@ -4,7 +4,7 @@ import unittest
 import pygame
 
 from ai.enemy_ai import EnemyAI
-from ai.trait_assignment import assign_personalities, assign_spawned, battle_personality, living_trait_counts
+from ai.trait_assignment import assign_personalities, assign_spawned, battle_personality, coming_battle, living_trait_counts
 from ai.trait_definitions import AI_TRAITS
 from game.battle_rules import BattleRules
 from game.board import Board, CaptureRecord
@@ -217,3 +217,31 @@ class TagLayoutTests(unittest.TestCase):
         game.hover = None
         game.selected_id = None
         self.assertEqual([row.trait for row in personality_layout(layout, run, aspects, game).rows], [run.battle.enemy_trait])
+
+
+class ShopPreviewTests(unittest.TestCase):
+    def test_shop_preview_matches_the_next_battle_without_changing_this_one(self):
+        from config.settings import ENEMY_FORMATIONS, parse_square
+        from game.level_manager import spawn_enemies
+
+        run = RunState.new(seed=21)
+        run.phase = "shop"
+        saved_trait = run.enemy_trait
+        saved_level = run.level
+        preview = coming_battle(run)
+        self.assertIsNotNone(preview)
+        trait, enemies = preview
+        self.assertEqual(trait, battle_personality(run.seed, saved_level + 1))
+        self.assertEqual(run.enemy_trait, saved_trait)
+        self.assertEqual(run.level, saved_level)
+        expected = spawn_enemies(saved_level + 1)
+        self.assertEqual(
+            [(piece.kind, piece.col, piece.row) for piece in enemies],
+            [(piece.kind, piece.col, piece.row) for piece in expected],
+        )
+        self.assertEqual(
+            {(piece.kind, (piece.col, piece.row)) for piece in enemies},
+            {(kind, parse_square(square)) for kind, square in ENEMY_FORMATIONS[saved_level + 1]},
+        )
+        self.assertTrue(all(piece.ai_trait == trait for piece in enemies))
+        self.assertTrue(all(piece.ai_trait == saved_trait for piece in run.enemies))

@@ -12,6 +12,7 @@ from rendering.enemy_tags import (
     left_sections,
 )
 from rendering.hud_renderer import _blit_text, get_font
+from rendering.shop_preview import draw_panel_preview
 
 GOLD_VALUE = (236, 206, 130)
 _GOLD_TRIMMED: pygame.Surface | None = None
@@ -31,6 +32,8 @@ def draw_left_sidebar(screen: pygame.Surface, run, layout, assets=None, game=Non
     _draw_gold(screen, assets, run, resources)
     _draw_heading(screen, "ARMY STATUS", army)
     _draw_army(screen, run, army)
+    if run.phase == "shop":
+        _draw_coming_board(screen, assets, run, layout, army)
     if run.notice:
         _blit_text(screen, run.notice, get_font(16, bold=False), (214, 120, 96), center=(rect.centerx, layout.menu.y - 18))
     _menu_button(screen, layout.menu, "Main Menu")
@@ -92,6 +95,15 @@ def _draw_army(screen: pygame.Surface, run, section: pygame.Rect) -> None:
     label = f"Army {count} / {run.army.capacity}"
     font = get_font(max(16, int(round(21 * hud_scale(section.w)))), bold=True)
     _blit_text(screen, label, font, IVORY, center=area.center)
+
+
+def _draw_coming_board(screen: pygame.Surface, assets, run, layout, army: pygame.Rect) -> None:
+    top = army.bottom + 12
+    bottom = layout.menu.y - (28 if run.notice else 10)
+    if bottom - top < 36:
+        return
+    bounds = pygame.Rect(layout.left.x + 16, top, max(1, layout.left.w - 32), bottom - top)
+    draw_panel_preview(screen, assets, run, bounds)
 
 
 def _menu_button(screen: pygame.Surface, rect: pygame.Rect, label: str) -> None:

@@ -14,6 +14,8 @@ from scenes.battle_scene import draw_battle
 from scenes.deployment_scene import DeploymentScene
 from rendering.victory_summary import draw_victory_summary
 from scenes.result_scene import draw_outcome_banner, draw_result
+from rendering.battle_columns import draw_left_sidebar
+from rendering.collection_overlay import collection_overlay
 from rendering.shop_renderer import draw_shop
 
 
@@ -58,6 +60,8 @@ def _paint(
     backdrop = not scene.motion.active
     if phase == "shop":
         draw_shop(screen, assets, run, shop_layout, backdrop=backdrop, entrance=entrance)
+        draw_left_sidebar(screen, run, board_layout, assets)
+        collection_overlay.paint(screen, assets, run)
         return
     if phase in ("preview", "deployment"):
         deployment.draw(screen, assets, run, board_layout, relic_bar, backdrop=backdrop)
