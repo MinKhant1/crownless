@@ -374,11 +374,14 @@ class RunState:
             self.notice = ""
             return None
         if self.shop.collection_open == "piece":
-            kind = self.shop.take_piece_choice()
-            if kind is None:
+            picked = self.shop.take_piece_choice()
+            if picked is None:
                 self.notice = "Choose a reward"
                 return self.notice
-            self.army.create(kind)
+            kind, trait = picked
+            piece = self.army.create(kind)
+            if trait:
+                piece.trait = trait
             self.notice = ""
             return None
         return None

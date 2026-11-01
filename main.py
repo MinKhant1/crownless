@@ -3,6 +3,7 @@ from pathlib import Path
 import pygame
 
 from config.settings import (
+    DEBUG_SHOP_GOLD,
     FPS,
     MAX_LEVEL,
     MIN_WINDOW_HEIGHT,
@@ -42,6 +43,8 @@ from scenes.deployment_scene import DeploymentScene
 from scenes.relic_overlay import RelicOverlay
 from rendering.victory_summary import continue_rect
 from scenes.result_scene import handle_result_click
+from scenes.how_to_play import HowToPlayScreen
+from scenes.main_menu import MainMenuScreen
 from scenes.screen_menu import ScreenMenu
 from scenes.shop_scene import handle_shop_click
 from scenes.trait_debug import TraitDebug
@@ -67,6 +70,8 @@ def main() -> None:
     clock = pygame.time.Clock()
     assets = AssetManager(ROOT / "assets")
     run = RunState.new()
+    if DEBUG_SHOP_GOLD is not None:
+        run.gold = DEBUG_SHOP_GOLD
     deployment = DeploymentScene()
     relics = RelicOverlay()
     relic_bar = RelicBar()
@@ -81,9 +86,79 @@ def main() -> None:
     dt = 0.0
     if SPECIAL_PIECE_VISUAL_TEST:
         visual_test.open(run)
+    front = MainMenuScreen()
+    guide = HowToPlayScreen()
+    mode = "play" if SPECIAL_PIECE_VISUAL_TEST else "menu"
+    if mode == "menu":
+        front.enter()
+
+    def _pump_front(current_mode, current_run, current_cursor, current_dt):
+        nonlocal running, screen
+        window = screen.get_size()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                return current_mode, current_run, current_cursor, current_dt
+            if event.type == pygame.VIDEORESIZE:
+                size = (max(MIN_WINDOW_WIDTH, event.w), max(MIN_WINDOW_HEIGHT, event.h))
+                if screen.get_size() != size:
+                    screen = pygame.display.set_mode(size, pygame.RESIZABLE)
+                    assets.clear_scaled()
+                    special_pieces.clear()
+                    figurines.clear()
+                    clear_board_cache()
+                    _RINGS.clear()
+                    relic_bar.clear()
+                    preview.clear()
+                    wood_swirl.resize()
+                window = screen.get_size()
+                continue
+            if current_mode == "menu":
+                action = front.on_event(event, window)
+                if action == "start":
+                    current_run = RunState.new()
+                    if DEBUG_SHOP_GOLD is not None:
+                        current_run.gold = DEBUG_SHOP_GOLD
+                    scene.reset()
+                    piece_motion.clear()
+                    relic_bar.clear()
+                    preview.dismiss()
+                    shop_piece.clear()
+                    shop_hand.clear()
+                    shop_offers.clear()
+                    return "play", current_run, current_cursor, current_dt
+                if action == "guide":
+                    guide.open()
+                    current_mode = "guide"
+                elif action == "exit":
+                    running = False
+                    return current_mode, current_run, current_cursor, current_dt
+            elif guide.on_event(event, window) == "back":
+                front.enter()
+                current_mode = "menu"
+        wood_swirl.update(current_dt)
+        if current_mode == "menu":
+            front.update(current_dt, window)
+            front.draw(screen, assets)
+            hand = front.wants_hand(window)
+        else:
+            guide.update(current_dt, window)
+            guide.draw(screen, assets)
+            hand = guide.wants_hand()
+        wanted = pygame.SYSTEM_CURSOR_HAND if hand else pygame.SYSTEM_CURSOR_ARROW
+        if current_cursor != wanted:
+            pygame.mouse.set_cursor(wanted)
+            current_cursor = wanted
+        pygame.display.flip()
+        return current_mode, current_run, current_cursor, min(0.05, clock.tick(FPS) / 1000.0)
+
     running = True
     while running:
         window = screen.get_size()
+        if mode != "play":
+            mode, run, cursor, dt = _pump_front(mode, run, cursor, dt)
+            if mode != "play":
+                continue
         board_layout = build_layout(*window)
         shop_layout = build_shop_layout(*window, board_layout.left.right + 12)
         relic_bar.bind(run)
@@ -354,6 +429,10 @@ def main() -> None:
                         or shop_piece.wants(run, shop_layout, window)
                         or shop_offers.hovered is not None
                         or collection_overlay.hover >= 0
+                        or (
+                            not collection_overlay.blocks(run)
+                            and shop_layout.reroll.collidepoint(pygame.mouse.get_pos())
+                        )
                     )
                 )
                 or (

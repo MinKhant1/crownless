@@ -4,11 +4,12 @@ from config.settings import (
     ARMY_UPGRADE_PRICE,
     PIECE_COLLECTION_PRICE,
     RELIC_COLLECTION_PRICE,
+    SHOP_CHEST_SCALE,
 )
 from game.run_state import RunState
 from rendering.asset_manager import AssetManager
 from rendering.card_motion import approach
-from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font
+from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font, overlay_buy_rect
 from rendering.shop_layout import ShopLayout
 
 
@@ -50,9 +51,13 @@ class ShopOffers:
 
     def art_rect(self, layout: ShopLayout, key: str) -> pygame.Rect:
         slot = layout.slots[key]
-        side = max(1, min(int(slot.w * 0.72), int(slot.h * 0.62)))
+        label_h = max(42, int(slot.h * 0.30))
+        area = pygame.Rect(slot.x + 8, slot.y + 6, max(1, slot.w - 16), max(1, slot.h - label_h))
+        side = max(1, min(area.w, area.h))
         rect = pygame.Rect(0, 0, side, side)
-        rect.center = (slot.centerx, slot.y + int(slot.h * 0.40))
+        rect.center = area.center
+        if key in ("relic_collection", "piece_collection"):
+            rect = _scaled(rect, SHOP_CHEST_SCALE)
         scale = self._scale.get(key, 1.0)
         lift = self._lift.get(key, 0.0)
         drawn = pygame.Rect(0, 0, max(1, int(rect.w * scale)), max(1, int(rect.h * scale)))
@@ -62,10 +67,8 @@ class ShopOffers:
     def buy_rect(self, run: RunState, layout: ShopLayout, key: str) -> pygame.Rect | None:
         if self.selected != key or _sold_out(run, key) or _pending(run, key):
             return None
-        slot = layout.slots[key]
-        rect = pygame.Rect(0, 0, max(96, int(slot.w * 0.78)), 30)
-        rect.midbottom = (slot.centerx, slot.bottom - 2)
-        return rect
+        square = self.art_rect(layout, key).inflate(8, 8)
+        return overlay_buy_rect(square, self.buy_caption(run, key)[0], "top")
 
     def buy_caption(self, run: RunState, key: str) -> tuple[str, bool]:
         price = _price(key)
@@ -141,7 +144,7 @@ class ShopOffers:
             button = self.buy_rect(run, layout, key)
             if button is not None:
                 caption, enabled = self.buy_caption(run, key)
-                draw_button(screen, button, caption, enabled=enabled, font_size=15)
+                draw_button(screen, button, caption, enabled=enabled, font_size=12)
             elif _pending(run, key):
                 _blit_text(screen, "Choose", get_font(max(14, rect.h // 8), bold=True), (245, 220, 170), center=(rect.centerx, rect.bottom + 12))
             elif _sold_out(run, key):
@@ -149,6 +152,14 @@ class ShopOffers:
                 shade.fill((24, 14, 10, 130))
                 screen.blit(shade, rect.topleft)
                 _blit_text(screen, "SOLD OUT", get_font(max(14, rect.h // 8), bold=True), (236, 214, 170), center=rect.center)
+
+
+def _scaled(rect: pygame.Rect, scale: float) -> pygame.Rect:
+    grown = pygame.Rect(rect)
+    grown.w = max(1, int(round(rect.w * scale)))
+    grown.h = max(1, int(round(rect.h * scale)))
+    grown.center = rect.center
+    return grown
 
 
 def _price(key: str) -> int:

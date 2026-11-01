@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import pygame
 
-from config.settings import RELIC_PRICE, SHOP_BUY
+from config.settings import RELIC_PRICE
 from game.relics.relic_data import RelicDef, relic_by_id
 from game.run_state import RunState
 from rendering.asset_manager import AssetManager
@@ -17,7 +17,7 @@ from rendering.card_motion import (
     preview_order,
     step_motion,
 )
-from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font
+from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font, overlay_buy_rect
 from rendering.relic_card import CARD_RATIO, RelicCardRenderer
 from rendering.relic_flip import shop_reveal
 from rendering.relic_tooltip_renderer import draw_relic_tooltip
@@ -25,16 +25,13 @@ from rendering.shop_layout import ShopLayout
 
 
 def relic_offer_slot(card: pygame.Rect) -> pygame.Rect:
-    top = card.y + int(card.h * 0.04)
-    bottom = card.y + int(card.h * SHOP_BUY[1]) - max(2, int(card.h * 0.02))
-    height = max(1, bottom - top)
+    height = max(1, int(card.h * 0.92))
     width = max(1, int(round(height * CARD_RATIO)))
-    limit = max(1, int(card.w * 0.92))
-    if width > limit:
-        width = limit
+    if width > int(card.w * 0.96):
+        width = max(1, int(card.w * 0.96))
         height = max(1, int(round(width / CARD_RATIO)))
     rect = pygame.Rect(0, 0, width, height)
-    rect.midtop = (card.centerx, top)
+    rect.center = card.center
     return rect
 
 
@@ -113,12 +110,7 @@ class ShopRelicHand:
         slot = next((item for item in self.slots(run, layout, window) if item.relic_id == self.selected_card_id), None)
         if slot is None:
             return None
-        label, _enabled = self.buy_caption(run)
-        price = f"{RELIC_PRICE} Gold"
-        font = get_font(15, bold=True)
-        width = max(slot.drawn.w, font.size(label)[0] + 28, font.size(price)[0] + 28)
-        rect = pygame.Rect(0, 0, width, 34)
-        rect.midtop = (slot.drawn.centerx, slot.drawn.bottom + 8)
+        rect = overlay_buy_rect(slot.drawn, self.buy_caption(run)[0], "top")
         bounds = pygame.Rect(8, 8, max(1, window[0] - 16), max(1, window[1] - 16))
         rect.clamp_ip(bounds)
         return rect
@@ -229,14 +221,7 @@ class ShopRelicHand:
             if button is not None:
                 label, enabled = self.buy_caption(run)
                 moved = button.move(dx, 0)
-                draw_button(screen, moved, label, enabled=enabled, font_size=15)
-                _blit_text(
-                    screen,
-                    f"{RELIC_PRICE} Gold",
-                    get_font(14, bold=True),
-                    (236, 220, 196),
-                    center=(moved.centerx, moved.bottom + 12),
-                )
+                draw_button(screen, moved, label, enabled=enabled, font_size=12)
         self._paint_flying(screen, assets)
 
     def _purchase(self, run: RunState, layout: ShopLayout, window: tuple[int, int]) -> None:

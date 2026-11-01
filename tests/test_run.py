@@ -1,7 +1,9 @@
+import random
 import unittest
 
 from config.settings import (
     ENEMY_FORMATIONS,
+    SHOP_PIECE_TRAITS,
     STARTER_KINDS,
     STARTING_GOLD,
     STARTING_NON_KING_CAPACITY,
@@ -100,7 +102,7 @@ class RunTests(unittest.TestCase):
         self.assertEqual(len(run.relics.owned), 0)
 
     def test_sold_out_and_reroll(self):
-        shop = ShopManager(ScriptedRandom(["knight", "queen", "rook"]))
+        shop = ShopManager(ScriptedRandom(["knight", "golden", "queen", "wooden", "rook", "ghost"]))
         from game.army_manager import ArmyManager
 
         army = ArmyManager()
@@ -109,6 +111,7 @@ class RunTests(unittest.TestCase):
         self.assertIsNone(notice)
         self.assertEqual(gold, 5)
         self.assertEqual(army.pieces[-1].kind, "knight")
+        self.assertEqual(army.pieces[-1].trait, "golden")
         gold, notice = shop.buy_piece(gold, army)
         self.assertEqual(notice, "Sold out")
         self.assertEqual(gold, 5)
@@ -135,6 +138,15 @@ class RunTests(unittest.TestCase):
         gold, notice = shop.reroll(gold)
         self.assertIsNone(notice)
         self.assertEqual(shop.piece_kind, "rook")
+
+    def test_shop_pieces_draw_each_special_trait_equally(self):
+        shop = ShopManager(random.Random(4))
+        counts = {trait: 0 for trait in SHOP_PIECE_TRAITS}
+        for _ in range(500):
+            shop.roll()
+            self.assertIn(shop.piece_trait, counts)
+            counts[shop.piece_trait] += 1
+        self.assertTrue(all(count > 50 for count in counts.values()))
 
     def test_army_upgrade_persists_for_the_run(self):
         run = RunState.new(seed=4)

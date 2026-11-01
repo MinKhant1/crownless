@@ -2,7 +2,7 @@ import math
 
 import pygame
 
-from config.settings import PIECE_PRICE, SHOP_BUY, SHOP_ICON
+from config.settings import PIECE_PRICE
 from game.run_state import RunState
 from rendering.asset_manager import AssetManager
 from rendering.card_motion import (
@@ -14,8 +14,9 @@ from rendering.card_motion import (
     placed_rect,
     step_motion,
 )
-from rendering.hud_renderer import draw_button, draw_relic_glow, get_font
+from rendering.hud_renderer import draw_button, draw_relic_glow, get_font, overlay_buy_rect
 from rendering.shop_layout import ShopLayout
+from rendering.special_piece_renderer import special_pieces
 
 
 class ShopPieceHand:
@@ -45,7 +46,7 @@ class ShopPieceHand:
             self._sprite_size = None
             return
         box = piece_box(layout.cards[0], run.shop.piece_kind.capitalize())
-        image = assets.fitted(f"white_{run.shop.piece_kind}", box.w, box.h)
+        image = special_pieces.image(assets, "white", run.shop.piece_kind, run.shop.piece_trait, min(box.w, box.h))
         self._sprite = image
         self._sprite_size = image.get_size()
 
@@ -86,10 +87,12 @@ class ShopPieceHand:
         return "Buy", True
 
     def buy_rect(self, run: RunState, layout: ShopLayout, window: tuple[int, int]) -> pygame.Rect | None:
-        del window
-        if not self.live(run) or self.dragging or not self.selected or not layout.buys:
+        if not self.live(run) or self.dragging or not self.selected:
             return None
-        return layout.buys[0].copy()
+        item = self.drawn_rect(run, layout, window)
+        if item is None:
+            return None
+        return overlay_buy_rect(item, self.buy_caption(run)[0], "top")
 
     def claims(self, pos: tuple[int, int], run: RunState, layout: ShopLayout, window: tuple[int, int]) -> bool:
         if not self.live(run):
@@ -202,7 +205,7 @@ class ShopPieceHand:
         button = self.buy_rect(run, layout, window)
         if button is not None:
             label, enabled = self.buy_caption(run)
-            draw_button(screen, button.move(dx, 0), label, enabled=enabled, font_size=max(15, button.h // 2))
+            draw_button(screen, button.move(dx, 0), label, enabled=enabled, font_size=12)
 
     def _target(self, rest: pygame.Rect) -> Motion:
         if self.dragging:
@@ -244,30 +247,13 @@ class ShopPieceHand:
 
 
 def piece_box(card: pygame.Rect, label: str) -> pygame.Rect:
-    text_width = int(card.w * 0.78)
-    name_font = _fit_font(label, text_width, max(13, int(card.h * 0.07)), True)
-    buy_top = card.y + int(card.h * SHOP_BUY[1])
-    name_center = buy_top - name_font.get_height() // 2 - 2
-    icon_x, icon_y, icon_w, icon_h = SHOP_ICON
-    box = pygame.Rect(
-        card.x + int(card.w * icon_x),
-        card.y + int(card.h * icon_y),
-        max(1, int(card.w * icon_w)),
-        max(1, int(card.h * icon_h)),
-    )
-    limit = name_center - name_font.get_height() // 2 - 4
-    if box.bottom > limit:
-        box.height = max(12, limit - box.y)
+    del label
+    margin_x = max(4, int(card.w * 0.06))
+    margin_y = max(4, int(card.h * 0.08))
+    box = card.inflate(-margin_x * 2, -margin_y * 2)
+    box.w = max(1, box.w)
+    box.h = max(1, box.h)
     return box
-
-
-def _fit_font(text: str, max_width: int, size: int, bold: bool) -> pygame.font.Font:
-    while size > 11:
-        font = get_font(size, bold=bold)
-        if font.size(text)[0] <= max_width:
-            return font
-        size -= 1
-    return get_font(11, bold=bold)
 
 
 def _shadow(screen: pygame.Surface, rect: pygame.Rect, strong: bool, angle: float) -> None:

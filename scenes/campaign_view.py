@@ -59,9 +59,12 @@ def _paint(
 ) -> None:
     backdrop = not scene.motion.active
     if phase == "shop":
+        if collection_overlay.blocks(run):
+            draw_background(screen, assets)
+            collection_overlay.paint(screen, assets, run)
+            return
         draw_shop(screen, assets, run, shop_layout, backdrop=backdrop, entrance=entrance)
         draw_left_sidebar(screen, run, board_layout, assets)
-        collection_overlay.paint(screen, assets, run)
         return
     if phase in ("preview", "deployment"):
         deployment.draw(screen, assets, run, board_layout, relic_bar, backdrop=backdrop)

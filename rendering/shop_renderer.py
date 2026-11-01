@@ -1,6 +1,7 @@
 import pygame
 
 from config.settings import (
+    DEBUG_SHOP_LAYOUT,
     ARMY_UPGRADE_PRICE,
     DARK_TEXT,
     LIGHT_TEXT,
@@ -14,6 +15,7 @@ from config.settings import (
     SHOP_CARD_STAGGER,
     TURN_CHECK,
 )
+from game.traits import trait_name
 from game.transitions.easing import ease_out_cubic
 from game.relics.relic_data import relic_by_id
 from game.run_state import RunState
@@ -22,6 +24,7 @@ from rendering.relic_flip import shop_reveal
 from rendering.shop_offers import shop_offers
 from rendering.shop_piece_hand import piece_box, shop_piece
 from rendering.shop_relic_hand import relic_offer_slot, shop_hand
+from rendering.special_piece_renderer import special_pieces
 from rendering.asset_manager import AssetManager
 from rendering.hud_renderer import _blit_text, draw_background, draw_button, draw_relic_glow, get_font
 from rendering.shop_layout import ShopLayout
@@ -47,7 +50,6 @@ def draw_shop(
     key = "shop_bg" if assets.has("shop_bg") else "shop_background"
     shop = assets.scaled(key, (layout.background.w, layout.background.h))
     screen.blit(shop, layout.background.topleft)
-    _draw_slot_labels(screen, run, layout)
     shop_offers.paint(screen, assets, run, layout)
     offer_dx, offer_alpha = _card_motion(entrance, 1)
     piece_dx, piece_alpha = _card_motion(entrance, 0)
@@ -62,56 +64,66 @@ def draw_shop(
         shop_piece.paint(screen, piece_dx, piece_alpha, run, layout)
         shop_hand.paint(screen, assets, run, layout, offer_dx, offer_alpha)
     _draw_sold(screen, run, layout)
+    _draw_slot_labels(screen, run, layout)
     dx, alpha = _card_motion(entrance, 3)
     if alpha > 0:
         _draw_reroll(screen, assets, layout, dx, alpha)
-    gold_tag = assets.scaled("price_tag", (layout.gold.w, layout.gold.h))
-    screen.blit(gold_tag, layout.gold.topleft)
-    _blit_text(
-        screen,
-        f"Gold  {run.gold}",
-        get_font(max(16, layout.gold.h * 0.34), bold=True),
-        DARK_TEXT,
-        center=layout.gold.center,
-    )
     draw_button(screen, layout.continue_button, "Continue", font_size=max(16, layout.continue_button.h // 2))
     if run.notice:
         color = TURN_CHECK if run.notice == "Not enough gold" else (236, 214, 170)
         _blit_text(screen, run.notice, get_font(18, bold=True), color, center=layout.notice.center)
+    if DEBUG_SHOP_LAYOUT:
+        _draw_layout_debug(screen, run, layout)
+
+
+def _piece_offer_name(run: RunState) -> str:
+    kind = run.shop.piece_kind.capitalize()
+    name = trait_name(run.shop.piece_trait)
+    return f"{name} {kind}" if name else kind
 
 
 def _draw_slot_labels(screen: pygame.Surface, run: RunState, layout: ShopLayout) -> None:
     rows = (
-        ("piece", PIECE_PRICE, run.shop.piece_kind.capitalize(), shop_piece.selected or run.shop.piece_sold),
-        ("relic", RELIC_PRICE, "", shop_hand.selected_card_id is not None or run.shop.relic_sold),
-        ("army_size", ARMY_UPGRADE_PRICE, "", shop_offers.selected == "army_size" or run.shop.army_sold),
+        ("piece", PIECE_PRICE, _piece_offer_name(run), run.shop.piece_sold),
+        ("relic", RELIC_PRICE, "", run.shop.relic_sold),
+        ("army_size", ARMY_UPGRADE_PRICE, "", run.shop.army_sold),
         (
             "relic_collection",
             RELIC_COLLECTION_PRICE,
             "",
-            shop_offers.selected == "relic_collection" or run.shop.relic_collection_claimed,
+            run.shop.relic_collection_claimed,
         ),
         (
             "piece_collection",
             PIECE_COLLECTION_PRICE,
             "",
-            shop_offers.selected == "piece_collection" or run.shop.piece_collection_claimed,
+            run.shop.piece_collection_claimed,
         ),
     )
     for key, price, name, covered in rows:
         slot = layout.slots[key]
-        chip_y = slot.bottom - max(14, slot.h // 12)
+        price_x, price_y = _price_point(layout, key, slot)
         if name and not run.shop.piece_sold:
             _blit_text(
                 screen,
                 name,
-                get_font(max(14, slot.h // 9), bold=True),
+                get_font(max(15, min(20, slot.h // 8)), bold=True),
                 (245, 232, 210),
-                center=(slot.centerx, chip_y - 22),
+                center=(slot.centerx, price_y - 22),
             )
         if covered:
             continue
-        _price_chip(screen, _gold_line(price), (slot.centerx, chip_y), run.gold >= price)
+        _price_chip(screen, _gold_line(price), (price_x, price_y), run.gold >= price)
+
+
+def _price_point(layout: ShopLayout, key: str, slot: pygame.Rect) -> tuple[int, int]:
+    if key == "relic" and len(layout.cards) > 1:
+        card = relic_offer_slot(layout.cards[1])
+        return card.centerx, card.bottom + 18
+    if key in ("relic_collection", "piece_collection"):
+        art = shop_offers.art_rect(layout, key)
+        return art.centerx, art.bottom + 18
+    return slot.centerx, slot.bottom - 16
 
 
 def _price_chip(screen: pygame.Surface, text: str, center: tuple[int, int], affordable: bool) -> None:
@@ -129,6 +141,29 @@ def _draw_sold(screen: pygame.Surface, run: RunState, layout: ShopLayout) -> Non
         _sold_plate(screen, layout.slots["piece"])
     if run.shop.relic_id and run.shop.relic_sold:
         _sold_plate(screen, layout.slots["relic"])
+
+
+def _draw_layout_debug(screen: pygame.Surface, run: RunState, layout: ShopLayout) -> None:
+    colors = {
+        "piece": (80, 255, 120),
+        "relic": (80, 220, 255),
+        "army_size": (255, 90, 90),
+        "relic_collection": (255, 210, 60),
+        "piece_collection": (180, 120, 255),
+    }
+    pygame.draw.rect(screen, (255, 255, 255), layout.background, 1)
+    for key, slot in layout.slots.items():
+        color = colors.get(key, (255, 255, 255))
+        pygame.draw.rect(screen, color, slot, 2)
+        pygame.draw.circle(screen, color, slot.center, 4)
+        _blit_text(screen, key, get_font(12, bold=True), color, center=(slot.centerx, slot.y + 10))
+    if layout.cards:
+        piece = shop_piece.rest_rect(run, layout) if shop_piece.live(run) else None
+        if piece is not None:
+            pygame.draw.rect(screen, (255, 255, 255), piece, 1)
+        pygame.draw.rect(screen, (255, 255, 255), layout.cards[1], 1)
+    for key in ("army_size", "relic_collection", "piece_collection"):
+        pygame.draw.rect(screen, (255, 255, 255), shop_offers.art_rect(layout, key), 1)
 
 
 def _sold_plate(screen: pygame.Surface, slot: pygame.Rect) -> None:
@@ -320,7 +355,7 @@ def _draw_offer(
     box = piece_box(card, label)
     if index == 0:
         if not hold_piece:
-            image = assets.fitted(f"white_{run.shop.piece_kind}", box.w, box.h)
+            image = special_pieces.image(assets, "white", run.shop.piece_kind, run.shop.piece_trait, min(box.w, box.h))
             screen.blit(image, image.get_rect(center=box.center))
     elif index == 1:
         image = assets.fitted("crown", int(box.w * 0.72), int(box.h * 0.72))

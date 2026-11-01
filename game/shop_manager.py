@@ -8,6 +8,7 @@ from config.settings import (
     RELIC_PRICE,
     REROLL_PRICE,
     SHOP_PIECE_KINDS,
+    SHOP_PIECE_TRAITS,
 )
 from game.army_manager import ArmyManager
 
@@ -17,6 +18,7 @@ class ShopManager:
         self.rng = rng
         self.catalog = tuple(catalog)
         self.piece_kind = SHOP_PIECE_KINDS[0]
+        self.piece_trait: str | None = None
         self.piece_sold = False
         self.army_sold = False
         self.relic_id: str | None = None
@@ -29,6 +31,7 @@ class ShopManager:
         self.piece_collection_claimed = False
         self.relic_choices: list[str] | None = None
         self.piece_choices: list[str] | None = None
+        self.piece_choice_traits: list[str] | None = None
         self.collection_open: str | None = None
         self.collection_pick: int | None = None
         self.roll()
@@ -36,6 +39,7 @@ class ShopManager:
     def roll(self, owned_ids: set[str] | None = None) -> None:
         self.offer_serial = getattr(self, "offer_serial", 0) + 1
         self.piece_kind = self.rng.choice(SHOP_PIECE_KINDS)
+        self.piece_trait = self.rng.choice(SHOP_PIECE_TRAITS)
         self.piece_sold = False
         self.army_sold = False
         owned = owned_ids or set()
@@ -56,6 +60,7 @@ class ShopManager:
         self.piece_collection_claimed = False
         self.relic_choices = None
         self.piece_choices = None
+        self.piece_choice_traits = None
         self.collection_open = None
         self.collection_pick = None
         self.roll(owned_ids)
@@ -72,7 +77,9 @@ class ShopManager:
             return gold, "Sold out"
         if gold < PIECE_PRICE:
             return gold, "Not enough gold"
-        army.create(self.piece_kind)
+        piece = army.create(self.piece_kind)
+        if self.piece_trait:
+            piece.trait = self.piece_trait
         self.piece_sold = True
         return gold - PIECE_PRICE, None
 
@@ -124,6 +131,7 @@ class ShopManager:
             return gold, "Not enough gold"
         kinds = list(SHOP_PIECE_KINDS)
         self.piece_choices = self.rng.sample(kinds, min(3, len(kinds)))
+        self.piece_choice_traits = [self.rng.choice(SHOP_PIECE_TRAITS) for _ in self.piece_choices]
         self.piece_collection_sold = True
         self.piece_collection_claimed = False
         self.collection_open = "piece"
@@ -150,13 +158,16 @@ class ShopManager:
         self.collection_pick = None
         return relic_id
 
-    def take_piece_choice(self) -> str | None:
+    def take_piece_choice(self) -> tuple[str, str | None] | None:
         if self.collection_open != "piece" or not self.piece_choices or self.piece_collection_claimed:
             return None
         if self.collection_pick is None or not 0 <= self.collection_pick < len(self.piece_choices):
             return None
-        kind = self.piece_choices[self.collection_pick]
+        index = self.collection_pick
+        kind = self.piece_choices[index]
+        traits = self.piece_choice_traits or ()
+        trait = traits[index] if index < len(traits) else None
         self.piece_collection_claimed = True
         self.collection_open = None
         self.collection_pick = None
-        return kind
+        return kind, trait

@@ -16,6 +16,7 @@ ARMY_SIZE = 6
 ARMY_CAPACITY = 6
 
 STARTING_GOLD = 5
+DEBUG_SHOP_GOLD = 1000
 STARTING_NON_KING_CAPACITY = 5
 PIECE_PRICE = 5
 RELIC_PRICE = 7
@@ -33,25 +34,29 @@ SHOP_CARD_STAGGER = 0.08
 LEVEL_PREVIEW_TIME = 0.65
 BATTLE_START_TIME = 0.40
 SHOP_PIECE_KINDS = ("pawn", "knight", "bishop", "rook", "queen")
+SHOP_PIECE_TRAITS = ("golden", "wanted", "explosive", "ghost", "wooden")
 STARTER_KINDS = ("pawn", "knight", "bishop", "rook", "queen", "king")
 DEPLOY_ROWS = (1, 2)
 ENEMY_ID_START = 10001
 
 SHOP_SOURCE = (1024, 1535)
-SHOP_BG_SOURCE = (1536, 1024)
-# Display bays on shop_bg.png, as fractions of the full image.
-SHOP_SLOT_FRACTIONS = {
-    "piece": (0.345, 0.198, 0.240, 0.145),
-    "relic": (0.610, 0.198, 0.250, 0.145),
-    "army_size": (0.338, 0.455, 0.168, 0.275),
-    "relic_collection": (0.522, 0.455, 0.168, 0.275),
-    "piece_collection": (0.706, 0.455, 0.168, 0.275),
+SHOP_BG_SOURCE = (1535, 1024)
+DEBUG_SHOP_LAYOUT = False
+# Shelf compartments in shop_bg.png pixels (image is 1535×1024).
+SHOP_SLOT_BOUNDS = {
+    "piece": (390, 358, 322, 182),
+    "relic": (815, 358, 328, 182),
+    "army_size": (364, 704, 227, 182),
+    "relic_collection": (643, 704, 233, 182),
+    "piece_collection": (947, 704, 227, 182),
 }
 CARD_SOURCE = (484, 479)
 PRICE_SOURCE = (379, 133)
 REROLL_SOURCE = (684, 385)
 SHOP_SIDE_RESERVE = 168
-SHOP_BACKGROUND_SCALE = 1.25
+SHOP_BACKGROUND_SCALE = 1.3
+SHOP_RELIC_CARD_SCALE = 2.0
+SHOP_CHEST_SCALE = 2.0
 SHOP_CARD_WIDTH_FRAC = 0.25
 SHOP_CARD_GAP_FRAC = 0.028
 SHOP_CARD_CENTER_Y = 0.735
@@ -164,6 +169,7 @@ SHOP_FILES = {
 SHOP_OPTIONAL_FILES = {
     "relic_chest": "relic_chest.png",
     "piece_chest": "piece_chest.png",
+    "crownless_logo": "crownless_logo.png",
 }
 
 ENEMY_FORMATIONS = {

@@ -2,7 +2,7 @@ import unittest
 
 import pygame
 
-from config.settings import PIECE_COLLECTION_PRICE, RELIC_COLLECTION_PRICE, REROLL_PRICE
+from config.settings import PIECE_COLLECTION_PRICE, RELIC_COLLECTION_PRICE, REROLL_PRICE, SHOP_PIECE_TRAITS
 from game.run_state import RunState
 from rendering.shop_layout import build_shop_layout
 from rendering.shop_offers import ShopOffers
@@ -50,6 +50,7 @@ class CollectionShopTests(unittest.TestCase):
         self.assertIsNone(run.confirm_collection())
         self.assertEqual(len(run.army.pieces), before + 1)
         self.assertEqual(run.army.pieces[-1].kind, choices[0])
+        self.assertIn(run.army.pieces[-1].trait, SHOP_PIECE_TRAITS)
         run.gold = 30
         self.assertEqual(run.buy_piece_collection(), "Sold out")
         self.assertEqual(run.gold, 30)
