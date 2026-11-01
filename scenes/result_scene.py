@@ -7,6 +7,7 @@ from game.run_state import RunState
 from game.transitions.easing import ease_out_cubic
 from rendering.asset_manager import AssetManager
 from rendering.hud_renderer import _blit_text, draw_background, draw_button, get_font
+from rendering.victory_summary import continue_rect
 
 
 def result_button(window: tuple[int, int], run: RunState) -> tuple[pygame.Rect, pygame.Rect]:
@@ -20,7 +21,9 @@ def result_button(window: tuple[int, int], run: RunState) -> tuple[pygame.Rect, 
 def outcome_button(window: tuple[int, int], run: RunState) -> pygame.Rect | None:
     if run.phase == "complete":
         return result_button(window, run)[1]
-    if run.phase in ("victory", "defeat"):
+    if run.phase == "victory":
+        return continue_rect(window, run)
+    if run.phase == "defeat":
         return _banner_button(window, run, run.phase)
     return None
 

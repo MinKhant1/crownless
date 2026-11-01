@@ -17,7 +17,7 @@ def debug_buttons(window: tuple[int, int], layout: Layout) -> tuple[pygame.Rect,
     return win, loss
 
 
-def handle_battle_click(run: RunState, pos: tuple[int, int], layout: Layout, window: tuple[int, int]) -> None:
+def handle_battle_click(run: RunState, pos: tuple[int, int], layout: Layout, window: tuple[int, int], enemy_busy: bool = False) -> None:
     session = run.battle
     if session is None or session.outcome is not None:
         return
@@ -29,6 +29,8 @@ def handle_battle_click(run: RunState, pos: tuple[int, int], layout: Layout, win
     if loss.collidepoint(pos):
         session.force("defeat")
         run.finish_defeat()
+        return
+    if enemy_busy or session.game.turns.current == "black":
         return
     if layout.left.collidepoint(pos) or layout.right.collidepoint(pos):
         return

@@ -12,6 +12,7 @@ from rendering.layout import Layout
 from rendering.shop_layout import ShopLayout
 from scenes.battle_scene import draw_battle
 from scenes.deployment_scene import DeploymentScene
+from rendering.victory_summary import draw_victory_summary
 from scenes.result_scene import draw_outcome_banner, draw_result
 from rendering.shop_renderer import draw_shop
 
@@ -64,8 +65,9 @@ def _paint(
     if phase in ("battle", "victory", "defeat"):
         draw_battle(screen, assets, run, board_layout, relic_bar, backdrop=backdrop, deployment=deployment)
         if phase == "victory":
-            enter, reward, show_button = _victory_amounts(scene, settled)
-            draw_outcome_banner(screen, run, "victory", enter, reward, show_button)
+            _enter, reward, show_button = _victory_amounts(scene, settled)
+            elapsed = 2.0 if settled else scene.banner_elapsed
+            draw_victory_summary(screen, assets, run, elapsed, show_button, reward)
         elif phase == "defeat":
             enter, reward, show_button = _victory_amounts(scene, settled)
             draw_outcome_banner(screen, run, "defeat", enter, reward, show_button)

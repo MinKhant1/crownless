@@ -2,6 +2,7 @@ import random
 
 from config.settings import BOARD_SIZE, DEPLOY_ROWS, MAX_LEVEL, STARTING_GOLD, VICTORY_GOLD
 from game.army_manager import ArmyManager
+from game.battle_summary import build_battle_summary, interest_amount, white_board_pieces
 from game.battle_rules import BattleRules
 from game.battle_session import BattleSession
 from game.deployment_manager import KIND_HOMES, DeploymentManager
@@ -38,6 +39,7 @@ class RunState:
         self.formation_snapshot: dict[int, tuple[int, int]] = {}
         self.battle_roster: tuple[tuple[int, str, str | None], ...] = ()
         self.shop_rerolls = 0
+        self.battle_summary = None
         self.prepare_level()
 
     @classmethod
@@ -248,10 +250,16 @@ class RunState:
     def finish_victory(self) -> None:
         if self.phase == "victory":
             return
+        gold_before = self.gold
+        rerolls_before = self.shop_rerolls
+        present = white_board_pieces(self)
         self.golden_reward = 0
         self.relics.dispatcher.publish(GameEvent(BATTLE_END, {"outcome": "victory"}))
+        relic_gold = self.gold - gold_before
+        reroll_gain = self.shop_rerolls - rerolls_before
         self._keep_survivors()
-        self.gold += VICTORY_GOLD
+        self.gold += VICTORY_GOLD + interest_amount(self)
+        self.battle_summary = build_battle_summary(self, gold_before, relic_gold, reroll_gain, present)
         self.phase = "victory"
         self.notice = ""
 

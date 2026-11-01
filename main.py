@@ -32,10 +32,12 @@ from rendering.piece_visual_effects import figurines
 from rendering.overlay_renderer import _RINGS
 from rendering.special_piece_renderer import special_pieces
 from rendering.trait_style import trait_style
+from ai.enemy_ai import EnemyTurn
 from scenes.battle_scene import handle_battle_click
 from scenes.campaign_view import present, settle_finished_board
 from scenes.deployment_scene import DeploymentScene
 from scenes.relic_overlay import RelicOverlay
+from rendering.victory_summary import continue_rect
 from scenes.result_scene import handle_result_click
 from scenes.screen_menu import ScreenMenu
 from scenes.shop_scene import handle_shop_click
@@ -71,6 +73,7 @@ def main() -> None:
     screen_menu = ScreenMenu()
     gallery = RelicGallery()
     preview = RelicPreviewModal()
+    enemy_turn = EnemyTurn()
     cursor = None
     dt = 0.0
     if SPECIAL_PIECE_VISUAL_TEST:
@@ -89,6 +92,7 @@ def main() -> None:
         wood_swirl.update(dt)
         preview.update(dt)
         scene.update(dt)
+        _advance_enemy(run, scene, enemy_turn, dt, visual_test)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -125,6 +129,16 @@ def main() -> None:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and wood_swirl.debug_hit(event.pos):
                 continue
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and wood_swirl.debug_click(event.pos):
+                continue
+            elif (
+                event.type == pygame.KEYDOWN
+                and event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_KP_ENTER)
+                and run.phase == "victory"
+                and scene.result_ready()
+                and not gallery.open
+                and not preview.blocks
+            ):
+                _continue_victory(scene, run, relic_bar)
                 continue
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and preview.on_escape():
                 continue
@@ -239,7 +253,7 @@ def main() -> None:
                     if before != "battle" and run.phase == "battle":
                         scene.begin_banner("battle_start")
                 elif run.phase == "battle":
-                    handle_battle_click(run, event.pos, board_layout, window)
+                    handle_battle_click(run, event.pos, board_layout, window, enemy_turn.busy())
                     if run.phase == "victory":
                         settle_finished_board(run)
                         scene.begin_banner("level_complete")
@@ -288,6 +302,11 @@ def main() -> None:
             and (
                 (run.phase in ("preview", "deployment", "battle") and relic_bar.hover_id is not None)
                 or (run.phase == "shop" and shop_card_hovered())
+                or (
+                    run.phase == "victory"
+                    and scene.result_ready()
+                    and continue_rect(window, run).collidepoint(pygame.mouse.get_pos())
+                )
             )
         )
         wanted = pygame.SYSTEM_CURSOR_HAND if hand else pygame.SYSTEM_CURSOR_ARROW
@@ -297,6 +316,20 @@ def main() -> None:
         pygame.display.flip()
         dt = min(0.05, clock.tick(FPS) / 1000.0)
     pygame.quit()
+
+
+def _advance_enemy(run, scene, enemy_turn: EnemyTurn, dt: float, visual_test) -> None:
+    if visual_test.active or scene.motion.active or run.phase != "battle" or run.battle is None:
+        return
+    outcome = enemy_turn.update(run.battle, dt, run.rng)
+    if outcome == "victory":
+        settle_finished_board(run)
+        run.finish_victory()
+        scene.begin_banner("level_complete")
+    elif outcome == "defeat":
+        settle_finished_board(run)
+        run.finish_defeat()
+        scene.begin_banner("game_over")
 
 
 def _pointer_blocked(scene: SceneManager, event: pygame.event.Event) -> bool:
