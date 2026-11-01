@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import pygame
 
 from config.settings import LIGHT_TEXT, VICTORY_GOLD
-from game.battle_summary import BattleSummary, FallenGroup, RewardRow
+from game.battle_summary import BattleSummary, RewardRow
 from game.piece import Piece
 from game.run_state import RunState
 from game.transitions.easing import ease_out_cubic
@@ -15,15 +15,8 @@ INK = (62, 36, 22)
 BRASS = (196, 146, 64)
 PARCHMENT = (236, 220, 186)
 PARCHMENT_EDGE = (92, 58, 32)
-WOOD = (54, 32, 20)
-WOOD_EDGE = (214, 170, 90)
 CREAM = (245, 232, 210)
 GOLD_BAND = (122, 74, 28)
-
-FALLEN_HEADINGS = {
-    "permanent": "Permanent Losses",
-    "temporary": "Temporary Losses",
-}
 
 ROW_COLORS = {
     "normal": INK,
@@ -35,11 +28,10 @@ ROW_COLORS = {
 
 @dataclass(frozen=True)
 class SummaryFrames:
-    left: pygame.Rect
     center: pygame.Rect
-    right: pygame.Rect
     button: pygame.Rect
     row_height: int
+    fallen: pygame.Rect
 
 
 def summary_for(run: RunState) -> BattleSummary:
@@ -63,35 +55,34 @@ def continue_rect(window: tuple[int, int], run: RunState) -> pygame.Rect:
 def summary_frames(window: tuple[int, int], summary: BattleSummary) -> SummaryFrames:
     width, height = window
     margin = 20 if width < 1100 else 32
-    gap = 14 if width < 1100 else 18
-    left_w = 200 if width < 1100 else 240
-    right_w = 210 if width < 1100 else 268
     center_w = 560 if width >= 1200 else 480
-    while left_w + center_w + right_w + gap * 2 > width - 16:
-        if center_w > 400:
-            center_w -= 8
-        elif right_w > 176:
-            right_w -= 4
-        elif left_w > 168:
-            left_w -= 4
-        else:
-            break
-    group = left_w + center_w + right_w + gap * 2
+    center_w = min(center_w, max(280, width - margin * 2))
     row_h = 34 if height >= 780 else 28
     chrome = 342
     rows = max(1, len(summary.rows))
-    center_h = min(height - margin * 2, chrome + rows * row_h)
-    row_h = max(22, min(row_h, (center_h - chrome) // rows))
-    block_h = chrome + rows * row_h
-    block_h = min(block_h, height - margin * 2)
-    origin_x = max(8, (width - group) // 2)
-    origin_y = max(12, (height - block_h) // 2)
-    left = pygame.Rect(origin_x, origin_y, left_w, block_h)
-    center = pygame.Rect(left.right + gap, origin_y, center_w, block_h)
-    right = pygame.Rect(center.right + gap, origin_y, right_w, block_h)
+    piece_count = sum(group.count for group in summary.fallen)
+    piece_band = 0 if piece_count == 0 else min(120, max(72, height // 8))
+    gap = 18 if piece_count else 0
+    floor = 12
+    room = max(1, height - margin - floor - gap - piece_band)
+    center_h = min(room, chrome + rows * row_h)
+    if center_h > chrome:
+        row_h = max(22, min(row_h, (center_h - chrome) // rows))
+    block_h = min(chrome + rows * row_h, room)
+    if piece_count:
+        piece_top = (height - piece_band) // 2
+        panel_top = piece_top + piece_band + gap
+        if panel_top + block_h > height - floor:
+            panel_top = height - floor - block_h
+            piece_top = max(8, panel_top - gap - piece_band)
+        fallen = pygame.Rect(margin, piece_top, max(1, width - margin * 2), piece_band)
+    else:
+        panel_top = max(margin, (height - block_h) // 2)
+        fallen = pygame.Rect(0, 0, 0, 0)
+    center = pygame.Rect(max(8, (width - center_w) // 2), panel_top, center_w, block_h)
     button = pygame.Rect(0, 0, min(280, center.w - 48), 50)
     button.center = (center.centerx, center.bottom - 42)
-    return SummaryFrames(left, center, right, button, row_h)
+    return SummaryFrames(center, button, row_h, fallen)
 
 
 def draw_victory_summary(
@@ -108,17 +99,10 @@ def draw_victory_summary(
     shade = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
     shade.fill((16, 9, 4, int(158 * reveal)))
     screen.blit(shade, (0, 0))
-    _fade_panel(screen, frames.left, reveal, lambda plate: _draw_status(plate, summary))
-    _fade_panel(screen, frames.right, reveal, lambda plate: _draw_fallen(plate, assets, summary))
     center = _panel_surface(frames.center)
     _draw_reward(center, summary, elapsed, show_button, reward, frames)
     _place(screen, center, frames.center, reveal)
-
-
-def _fade_panel(screen: pygame.Surface, rect: pygame.Rect, reveal: float, paint) -> None:
-    plate = _panel_surface(rect)
-    paint(plate)
-    _place(screen, plate, rect, reveal)
+    _draw_fallen_images(screen, assets, summary, frames.fallen, reveal)
 
 
 def _place(screen: pygame.Surface, plate: pygame.Surface, rect: pygame.Rect, reveal: float) -> None:
@@ -144,32 +128,6 @@ def _panel_surface(rect: pygame.Rect) -> pygame.Surface:
     inner = body.inflate(-12, -12)
     pygame.draw.rect(plate, BRASS, inner, width=1, border_radius=12)
     return plate
-
-
-def _draw_status(plate: pygame.Surface, summary: BattleSummary) -> None:
-    wood = plate.get_rect().inflate(-18, -18)
-    pygame.draw.rect(plate, WOOD, wood, border_radius=12)
-    pygame.draw.rect(plate, WOOD_EDGE, wood, width=2, border_radius=12)
-    rows = (
-        ("Battle", str(summary.battle_number)),
-        ("Gold", str(summary.gold_after)),
-        ("Army Size", f"{summary.army_count} / {summary.army_capacity}"),
-        ("Surviving", str(summary.surviving)),
-        ("Fallen", str(summary.fallen_count)),
-    )
-    font = get_font(15, bold=False)
-    value_font = get_font(22, bold=True)
-    gap = 8
-    row_h = max(36, (wood.h - 16 - gap * (len(rows) - 1)) // len(rows))
-    y = wood.y + 8
-    for label, value in rows:
-        card = pygame.Rect(wood.x + 10, y, wood.w - 20, row_h)
-        pygame.draw.rect(plate, (74, 44, 26), card, border_radius=8)
-        pygame.draw.rect(plate, (168, 124, 64), card, width=1, border_radius=8)
-        _blit_text(plate, label, font, (214, 186, 146), midleft=(card.x + 12, card.centery))
-        value_w = value_font.size(value)[0]
-        _blit_text(plate, value, value_font, CREAM, midleft=(card.right - 12 - value_w, card.centery))
-        y += row_h + gap
 
 
 def _draw_reward(
@@ -262,50 +220,39 @@ def _draw_continue(plate: pygame.Surface, rect: pygame.Rect, screen_rect: pygame
     _blit_text(plate, "Continue", get_font(22, bold=True), LIGHT_TEXT, center=drawn.center)
 
 
-def _draw_fallen(plate: pygame.Surface, assets: AssetManager, summary: BattleSummary) -> None:
-    _blit_text(plate, "FALLEN PIECES", get_font(22, bold=True), INK, center=(plate.get_width() // 2, 36))
-    pygame.draw.line(plate, BRASS, (24, 58), (plate.get_width() - 24, 58), 2)
-    if summary.flawless:
-        badge = pygame.Rect(20, 78, plate.get_width() - 40, 78)
-        pygame.draw.rect(plate, (168, 112, 36), badge, border_radius=12)
-        pygame.draw.rect(plate, (236, 206, 120), badge, width=2, border_radius=12)
-        _blit_text(plate, "Flawless Victory", get_font(20, bold=True), CREAM, center=(badge.centerx, badge.y + 28))
-        _blit_text(plate, "No pieces lost", get_font(16, bold=False), (255, 236, 204), center=(badge.centerx, badge.y + 52))
-        return
-    y = 72
-    sections = _fallen_sections(summary)
-    headings = len(sections) > 1
-    for category, groups in sections:
-        if headings or category != "permanent":
-            _blit_text(plate, FALLEN_HEADINGS.get(category, category.title()), get_font(14, bold=True), (122, 78, 24), midleft=(24, y + 8))
-            y += 24
-        for group in groups:
-            y = _draw_fallen_row(plate, assets, group, y)
-            if y > plate.get_height() - 24:
-                return
-
-
-def _fallen_sections(summary: BattleSummary) -> list[tuple[str, list[FallenGroup]]]:
-    order: list[str] = []
+def _fallen_icons(summary: BattleSummary) -> list[tuple[str, str | None]]:
+    icons: list[tuple[str, str | None]] = []
     for group in summary.fallen:
-        if group.category not in order:
-            order.append(group.category)
-    return [(category, [group for group in summary.fallen if group.category == category]) for category in order]
+        icons.extend((group.kind, group.trait) for _ in range(max(0, group.count)))
+    return icons
 
 
-def _draw_fallen_row(plate: pygame.Surface, assets: AssetManager, group: FallenGroup, y: int) -> int:
-    icon = pygame.Rect(22, y, 36, 36)
-    piece = Piece(0, group.kind, "white", trait=group.trait)
-    try:
-        image = figurines.image(assets, piece, 34)
-        plate.blit(image, image.get_rect(center=icon.center))
-    except (KeyError, pygame.error):
-        pygame.draw.circle(plate, BRASS, icon.center, 10)
-    font = get_font(18, bold=False)
-    _blit_text(plate, group.name, font, INK, midleft=(64, icon.centery))
-    count = f"×{group.count}"
-    _blit_text(plate, count, get_font(18, bold=True), INK, midleft=(plate.get_width() - 24 - font.size(count)[0], icon.centery))
-    return y + 42
+def _draw_fallen_images(
+    screen: pygame.Surface,
+    assets: AssetManager,
+    summary: BattleSummary,
+    band: pygame.Rect,
+    reveal: float,
+) -> None:
+    icons = _fallen_icons(summary)
+    if not icons or band.w <= 0 or band.h <= 0:
+        return
+    gap = 16
+    box = min(band.h, 112)
+    while len(icons) * box + (len(icons) - 1) * gap > band.w and box > 32:
+        box -= 2
+    total = len(icons) * box + (len(icons) - 1) * gap
+    x = band.centerx - total // 2
+    for kind, trait in icons:
+        piece = Piece(0, kind, "white", trait=trait)
+        try:
+            image = figurines.image(assets, piece, box)
+        except (KeyError, pygame.error):
+            image = pygame.Surface((box, box), pygame.SRCALPHA)
+            pygame.draw.circle(image, BRASS, (box // 2, box // 2), max(4, box // 5))
+        dest = image.get_rect(midleft=(x, band.centery))
+        _place(screen, image, dest, reveal)
+        x += box + gap
 
 
 def _row_alpha(elapsed: float, index: int) -> float:

@@ -3,7 +3,7 @@ import unittest
 import pygame
 
 from config.settings import GOLDEN_BONUS, VICTORY_GOLD
-from game.battle_summary import FallenGroup, RewardRow, build_battle_summary
+from game.battle_summary import BattleSummary, FallenGroup, RewardRow, build_battle_summary
 from game.piece import Piece
 from game.run_state import RunState
 from rendering.victory_summary import continue_rect, summary_frames, summary_for
@@ -114,10 +114,29 @@ class SummaryLayoutTests(unittest.TestCase):
         for size in ((1440, 900), (960, 720)):
             frames = summary_frames(size, summary_for(run))
             window = pygame.Rect(0, 0, *size)
-            self.assertTrue(window.contains(frames.left))
             self.assertTrue(window.contains(frames.center))
-            self.assertTrue(window.contains(frames.right))
             self.assertTrue(frames.center.contains(frames.button))
             self.assertEqual(continue_rect(size, run), frames.button)
-            self.assertLess(frames.left.right, frames.center.left)
-            self.assertLess(frames.center.right, frames.right.left)
+            self.assertLess(abs(frames.center.centerx - size[0] // 2), 2)
+            self.assertEqual(frames.fallen.size, (0, 0))
+
+    def test_fallen_images_sit_in_the_middle(self):
+        summary = BattleSummary(
+            battle_number=1,
+            gold_before=3,
+            gold_after=6,
+            army_count=5,
+            army_capacity=5,
+            surviving=4,
+            rows=(RewardRow("Battle Win", 3),),
+            fallen=(FallenGroup("queen", 1), FallenGroup("pawn", 2, trait="ghost")),
+        )
+        for size in ((1440, 900), (960, 720)):
+            frames = summary_frames(size, summary)
+            window = pygame.Rect(0, 0, *size)
+            self.assertTrue(window.contains(frames.center))
+            self.assertTrue(window.contains(frames.fallen))
+            self.assertFalse(frames.center.colliderect(frames.fallen))
+            self.assertLess(abs(frames.fallen.centerx - size[0] // 2), 2)
+            self.assertLess(abs(frames.fallen.centery - size[1] // 2), size[1] * 0.12)
+            self.assertLess(frames.fallen.bottom, frames.center.top)

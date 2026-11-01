@@ -149,7 +149,7 @@ def draw_lock(screen: pygame.Surface, square: pygame.Rect) -> None:
     pygame.draw.arc(screen, (48, 36, 24), shackle, 0.15, 3.0, 2)
 
 
-def draw_trait_tooltip(screen: pygame.Surface, game, layout) -> None:
+def draw_trait_tooltip(screen: pygame.Surface, game, layout, assets=None) -> None:
     from rendering.hud_renderer import _blit_text, get_font
 
     hover = game.hover
@@ -157,6 +157,9 @@ def draw_trait_tooltip(screen: pygame.Surface, game, layout) -> None:
         return
     piece = game.board.piece_at(*hover)
     if piece is None:
+        return
+    if piece.color == "black" and piece.ai_trait:
+        _draw_personality_tooltip(screen, piece, layout, assets)
         return
     lines = trait_tooltip_lines(piece)
     if lines is None:
@@ -178,6 +181,35 @@ def draw_trait_tooltip(screen: pygame.Surface, game, layout) -> None:
     y = panel.y + 40
     for line in wrapped:
         _blit_text(screen, line, body_font, (226, 210, 188), midleft=(panel.x + 10, y))
+        y += 20
+
+
+def _draw_personality_tooltip(screen: pygame.Surface, piece, layout, assets) -> None:
+    from ai.trait_definitions import trait_description, trait_title
+    from rendering.hud_renderer import _blit_text, get_font
+
+    title_font = get_font(18, bold=True)
+    body_font = get_font(15, bold=False)
+    title = f"Enemy {piece.kind.capitalize()}"
+    body = trait_description(piece.ai_trait)
+    width = 250
+    wrapped = _wrap(body_font, body, width - 20)
+    tag_h = 52
+    height = 18 + 24 + tag_h + 8 + len(wrapped) * 20
+    square = layout.square_rect(piece.col, piece.row)
+    panel = _place(square, width, height, screen.get_size())
+    pygame.draw.rect(screen, (236, 220, 186), panel, border_radius=8)
+    pygame.draw.rect(screen, (92, 58, 32), panel, width=2, border_radius=8)
+    _blit_text(screen, title, title_font, (62, 36, 22), midleft=(panel.x + 12, panel.y + 16))
+    _blit_text(screen, trait_title(piece.ai_trait), get_font(13, bold=True), (122, 78, 24), midleft=(panel.x + 12, panel.y + 36))
+    tag = pygame.Rect(panel.x + 12, panel.y + 48, width - 24, tag_h)
+    image = None
+    if assets is not None and assets.has(f"tag_{piece.ai_trait}"):
+        image = assets.fitted(f"tag_{piece.ai_trait}", tag.w, tag.h)
+        screen.blit(image, image.get_rect(midtop=(panel.centerx, tag.y)))
+    y = tag.bottom + 8
+    for line in wrapped:
+        _blit_text(screen, line, body_font, (92, 58, 32), midleft=(panel.x + 12, y))
         y += 20
 
 

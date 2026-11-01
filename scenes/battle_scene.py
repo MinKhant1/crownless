@@ -60,4 +60,4 @@ def draw_battle(screen: pygame.Surface, assets: AssetManager, run: RunState, lay
         win, loss = debug_buttons(screen.get_size(), layout)
         draw_button(screen, win, "Debug Win", font_size=16)
         draw_button(screen, loss, "Debug Loss", font_size=16)
-    draw_trait_tooltip(screen, game, layout)
+    draw_trait_tooltip(screen, game, layout, assets)

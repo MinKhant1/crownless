@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pygame
 
+from ai.trait_definitions import TAG_FILES
 from config.settings import HUD_FILES, PIECE_KINDS, SHOP_FILES
 
 
@@ -39,6 +40,13 @@ class AssetManager:
                 if path.stem in ("back_card", "card_background"):
                     continue
                 self._load_optional(path, f"relic_front_{path.stem}")
+        tags = self.root / "tags"
+        for trait, filenames in TAG_FILES.items():
+            for filename in filenames:
+                path = tags / filename
+                if path.exists():
+                    self._load_optional(path, f"tag_{trait}")
+                    break
 
     def has(self, key: str) -> bool:
         return key in self._raw

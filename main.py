@@ -24,7 +24,8 @@ from rendering.relic_bar_renderer import RelicBar
 from rendering.relic_flip import shop_reveal
 from rendering.relic_preview import RelicPreviewModal
 from rendering.shop_layout import build_shop_layout
-from rendering.shop_renderer import set_shop_hover, shop_card_hovered, shop_relic_rect
+from rendering.shop_piece_hand import shop_piece
+from rendering.shop_relic_hand import shop_hand
 from rendering.wood_swirl import wood_swirl
 from scenes.relic_gallery import RelicGallery
 from rendering.piece_animation_controller import piece_motion
@@ -88,6 +89,7 @@ def main() -> None:
             relic_bar.close_detail()
         if run.phase == "shop":
             shop_reveal.update(dt, (run.shop.offer_serial, run.shop.relic_id))
+            shop_piece.prepare(assets, run, shop_layout)
         gallery.update(dt)
         wood_swirl.update(dt)
         preview.update(dt)
@@ -163,9 +165,17 @@ def main() -> None:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
                 relic_bar.on_right_click()
             elif event.type == pygame.MOUSEMOTION:
-                set_shop_hover(event.pos if run.phase == "shop" else None, shop_layout, run)
+                held = bool(event.buttons[0])
+                if run.phase == "shop":
+                    shop_piece.on_motion(run, event.pos, shop_layout, window, held=held)
+                    shop_hand.on_motion(run, event.pos, shop_layout, window, held=held)
+                    if shop_piece.claims(event.pos, run, shop_layout, window) and not shop_hand.dragging:
+                        shop_hand.hovered_card_id = None
+                else:
+                    shop_hand.hovered_card_id = None
+                    shop_piece.hovered = False
                 if run.phase in ("preview", "deployment", "battle"):
-                    relic_bar.on_motion(run, event.pos, board_layout)
+                    relic_bar.on_motion(run, event.pos, board_layout, held=held)
                 else:
                     relic_bar.hover_id = None
                 if _board_phase(run):
@@ -173,7 +183,13 @@ def main() -> None:
                 relics.on_motion(run, event.pos, window, shop_layout)
                 if relics.open:
                     continue
-                if visual_test.active and visual_test.game is not None:
+                over_relic = relic_bar.pointer_captured or relic_bar.hovered_card_id is not None
+                if over_relic:
+                    if run.phase == "battle" and run.battle is not None:
+                        run.battle.game.hover = None
+                    elif run.phase in ("preview", "deployment"):
+                        deployment.hover = None
+                elif visual_test.active and visual_test.game is not None:
                     visual_test.game.hover = square_at(board_layout, event.pos)
                 elif run.phase in ("preview", "deployment"):
                     deployment.on_motion(event.pos)
@@ -186,6 +202,10 @@ def main() -> None:
                 if _board_phase(run) and screen_menu.on_press(board_layout, event.pos):
                     continue
                 if run.phase in ("preview", "deployment", "battle") and relic_bar.on_left_down(event.pos, run, board_layout):
+                    continue
+                if run.phase == "shop" and shop_piece.on_left_down(event.pos, run, shop_layout, window):
+                    continue
+                if run.phase == "shop" and shop_hand.on_left_down(event.pos, run, shop_layout, window):
                     continue
                 if trait_debug.hits(event.pos, board_layout, window, _trait_icons(deployment, run, window, board_layout)):
                     continue
@@ -215,11 +235,11 @@ def main() -> None:
                         figurines.clear()
                         _RINGS.clear()
                     continue
-                if run.phase in ("preview", "deployment", "battle") and (relic_bar.armed or relic_bar.detail_id is not None):
+                if run.phase in ("preview", "deployment", "battle") and (
+                    relic_bar.armed or relic_bar.dragging or relic_bar.detail_id is not None
+                ):
                     relic_bar.on_left_up(run, event.pos, board_layout, window)
-                    slot = relic_bar.consume_click()
-                    if slot is not None:
-                        preview.show(slot.definition.id, slot.rest, slot.owned.instance_id)
+                    relic_bar.consume_click()
                     continue
                 if relics.armed or relics.open:
                     relics.on_click(run, event.pos, window)
@@ -234,18 +254,14 @@ def main() -> None:
                     if square is not None:
                         visual_test.game.on_board_click(*square)
                 elif run.phase == "shop":
-                    offer = shop_relic_rect(shop_layout)
-                    buying = shop_layout.buys[1]
-                    if (
-                        run.shop.relic_id
-                        and shop_reveal.face_up
-                        and offer.collidepoint(event.pos)
-                        and not buying.collidepoint(event.pos)
-                    ):
-                        preview.show(run.shop.relic_id, offer)
+                    if shop_piece.on_left_up(event.pos, run, shop_layout, window):
+                        continue
+                    if shop_hand.on_left_up(event.pos, run, shop_layout, window):
                         continue
                     if handle_shop_click(run, event.pos, shop_layout) == "leave":
                         preview.dismiss()
+                        shop_hand.clear()
+                        shop_piece.clear()
                         _leave_shop(scene, run, relic_bar)
                 elif run.phase in ("preview", "deployment"):
                     before = run.phase
@@ -274,6 +290,15 @@ def main() -> None:
                         _continue_victory(scene, run, relic_bar)
         if not visual_test.active and run.phase == "preview":
             run.begin_deployment()
+        if run.phase in ("preview", "deployment", "battle", "victory", "defeat"):
+            relic_bar.update(dt, run, board_layout)
+        elif relic_bar.dragging or relic_bar.armed:
+            relic_bar.cancel_pointer()
+        if run.phase == "shop":
+            shop_piece.update(dt, run, shop_layout, window)
+            shop_hand.update(dt, run, shop_layout, window)
+        elif shop_piece.dragging or shop_piece.armed:
+            shop_piece.clear()
         if visual_test.active and visual_test.game is not None:
             render_battle(screen, assets, visual_test.game, board_layout, relic_bar, run, army=deployment.army)
             _blit_text(
@@ -301,7 +326,7 @@ def main() -> None:
             and relic_bar.detail_id is None
             and (
                 (run.phase in ("preview", "deployment", "battle") and relic_bar.hover_id is not None)
-                or (run.phase == "shop" and shop_card_hovered())
+                or (run.phase == "shop" and (shop_hand.wants_hand(run, shop_layout, window) or shop_piece.wants(run, shop_layout, window)))
                 or (
                     run.phase == "victory"
                     and scene.result_ready()

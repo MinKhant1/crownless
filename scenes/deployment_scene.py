@@ -231,14 +231,14 @@ class DeploymentScene:
         skip = self.press_id if self.dragging else None
         draw_pieces(screen, assets, game, layout, skip_id=skip)
         draw_crown(screen, assets, layout)
-        draw_left_sidebar(screen, run, layout)
+        draw_left_sidebar(screen, run, layout, assets, game)
         self.army.draw(screen, assets, run, layout)
         if run.phase == "preview":
             draw_button(screen, layout.deploy, "Deploy")
         elif run.phase == "deployment":
             _reset, start = self.command_buttons(layout)
             draw_button(screen, start, "Start Battle", enabled=run.validate_deployment(), font_size=18)
-        draw_trait_tooltip(screen, game, layout)
+        draw_trait_tooltip(screen, game, layout, assets)
         if self.dragging and self.press_id is not None and self.drag_pos is not None:
             piece = run.army.piece_by_id(self.press_id)
             if piece is not None:

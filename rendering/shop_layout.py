@@ -6,6 +6,7 @@ from config.settings import (
     CARD_SOURCE,
     PRICE_SOURCE,
     REROLL_SOURCE,
+    SHOP_BACKGROUND_SCALE,
     SHOP_BUY,
     SHOP_CARD_CENTER_Y,
     SHOP_CARD_GAP_FRAC,
@@ -42,6 +43,12 @@ def build_shop_layout(window_w: int, window_h: int) -> ShopLayout:
     if width > max_width:
         width = max_width
         height = int(round(width / aspect))
+    width = int(round(width * SHOP_BACKGROUND_SCALE))
+    height = int(round(height * SHOP_BACKGROUND_SCALE))
+    width_limit = max(280, window_w - 16)
+    if width > width_limit:
+        width = width_limit
+        height = int(round(width / aspect))
     background = pygame.Rect((window_w - width) // 2, (window_h - height) // 2, width, height)
     card_w = max(88, int(width * SHOP_CARD_WIDTH_FRAC))
     card_h = max(88, int(round(card_w * CARD_SOURCE[1] / CARD_SOURCE[0])))
@@ -77,6 +84,8 @@ def build_shop_layout(window_w: int, window_h: int) -> ShopLayout:
     reroll_w = min(int(background.w * SHOP_REROLL_WIDTH_FRAC), max(140, background.x - 20))
     reroll_h = max(70, int(round(reroll_w * REROLL_SOURCE[1] / REROLL_SOURCE[0])))
     reroll = pygame.Rect(max(8, background.x - reroll_w - 10), background.bottom - reroll_h + 6, reroll_w, reroll_h)
+    if reroll.bottom > window_h - 8:
+        reroll.bottom = window_h - 8
     label_x, label_y, label_w, label_h = SHOP_REROLL_LABEL
     reroll_label = pygame.Rect(
         reroll.x + int(reroll.w * label_x),
@@ -90,5 +99,7 @@ def build_shop_layout(window_w: int, window_h: int) -> ShopLayout:
     if gold.right > window_w - 8:
         gold.x = window_w - gold_w - 8
     button = pygame.Rect(gold.x, background.bottom - 58, gold_w, 48)
+    if button.bottom > window_h - 8:
+        button.bottom = window_h - 8
     notice = pygame.Rect(gold.x, gold.bottom + 10, gold_w, 56)
     return ShopLayout(background, cards, tags, buys, reroll, reroll_label, gold, button, notice)

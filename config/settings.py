@@ -40,6 +40,7 @@ CARD_SOURCE = (484, 479)
 PRICE_SOURCE = (379, 133)
 REROLL_SOURCE = (684, 385)
 SHOP_SIDE_RESERVE = 168
+SHOP_BACKGROUND_SCALE = 1.25
 SHOP_CARD_WIDTH_FRAC = 0.25
 SHOP_CARD_GAP_FRAC = 0.028
 SHOP_CARD_CENTER_Y = 0.735
@@ -139,6 +140,7 @@ HUD_FILES = {
     "status": "status_bar.png",
     "light": "light_square.png",
     "dark": "dark_square.png",
+    "gold": "gold.png",
 }
 
 SHOP_FILES = {

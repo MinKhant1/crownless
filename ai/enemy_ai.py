@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from config.settings import square_name
 from game.board import Board
 from game.move import Move
-from game.piece import Piece
-from ai.ai_config import AI_DIFFICULTY, DIFFICULTY, HIGHLIGHT_SECONDS, PIECE_VALUES, TRAVEL_SECONDS
-from ai.move_evaluator import allowed_moves, priority_target, score_move
+from ai.ai_config import AI_DIFFICULTY, DIFFICULTY, HIGHLIGHT_SECONDS, TRAVEL_SECONDS
+from ai.move_evaluator import allowed_moves, score_move
+from ai.trait_definitions import HUNT_VALUES, trait_title
 
 
 @dataclass
@@ -23,6 +23,7 @@ class ScoredMove:
     exposed: bool
     target: str | None
     mover_kind: str
+    personality: str
 
     @property
     def reason(self) -> str:
@@ -42,7 +43,7 @@ class ScoredMove:
 class Decision:
     move: Move | None
     scored: list[ScoredMove]
-    target: Piece | None
+    target: str | None
     report: str
 
 
@@ -51,17 +52,17 @@ class EnemyAI:
         self.previous: Move | None = None
         self.last_decision: Decision | None = None
 
-    def choose(self, board: Board, rules=None, rng: random.Random | None = None, difficulty: str | None = None, turn: int | None = None) -> Decision:
+    def choose(self, board: Board, rules=None, rng: random.Random | None = None, difficulty: str | None = None, turn: int | None = None, trait: str | None = None) -> Decision:
         source = rng if rng is not None else random.Random(0)
         name = difficulty or DIFFICULTY
         moves = allowed_moves(board, rules, "black")
-        target = priority_target(board, "white")
-        scored = [_scored(board, rules, move, self.previous) for move in moves]
+        scored = [_scored(board, rules, move, self.previous, trait) for move in moves]
         scored.sort(key=lambda item: (-item.score, item.move.from_col, item.move.from_row, item.move.to_col, item.move.to_row))
         picked = _pick(scored, source, name)
         if picked is not None:
             self.previous = picked.move
-        decision = Decision(None if picked is None else picked.move, scored, target, _report(target, scored, picked, turn))
+        focus = None if picked is None else picked.target
+        decision = Decision(None if picked is None else picked.move, scored, focus, _report(focus, scored, picked, turn))
         self.last_decision = decision
         return decision
 
@@ -103,9 +104,13 @@ class EnemyTurn:
             return self._commit(session)
         if game.turns.finished or game.turns.current != "black" or game.pending_turn:
             return None
-        decision = self.ai.choose(game.board, session.rules, rng, turn=game.turns.move_count + 1)
+        trait = getattr(session, "enemy_trait", None)
+        turn_number = game.turns.move_count // 2 + 1
+        decision = self.ai.choose(game.board, session.rules, rng, turn=turn_number, trait=trait)
         if decision.move is None:
             return None
+        if trait:
+            print(f"[Turn {turn_number}] Enemy AI: {trait.upper()}")
         if game.debug:
             print(decision.report)
         self.move = decision.move
@@ -134,8 +139,8 @@ class EnemyTurn:
         return None
 
 
-def _scored(board: Board, rules, move: Move, previous: Move | None) -> ScoredMove:
-    detail = score_move(board, rules, move, previous)
+def _scored(board: Board, rules, move: Move, previous: Move | None, trait: str | None = None) -> ScoredMove:
+    detail = score_move(board, rules, move, previous, trait)
     mover = board.piece_at(move.from_col, move.from_row)
     return ScoredMove(
         move,
@@ -150,6 +155,7 @@ def _scored(board: Board, rules, move: Move, previous: Move | None) -> ScoredMov
         detail["exposed"],
         detail["target"],
         "piece" if mover is None else mover.kind,
+        detail["personality"],
     )
 
 
@@ -165,17 +171,19 @@ def _pick(scored: list[ScoredMove], rng: random.Random, difficulty: str) -> Scor
     return rng.choice(others)
 
 
-def _report(target: Piece | None, scored: list[ScoredMove], picked: ScoredMove | None, turn: int | None) -> str:
+def _report(target: str | None, scored: list[ScoredMove], picked: ScoredMove | None, turn: int | None) -> str:
     heading = "[Enemy AI]" if turn is None else f"[Enemy AI] Turn {turn}"
     if target is None:
         headline = "Priority Target: none"
     else:
-        headline = f"Priority Target: Player {target.kind.capitalize()} (Value {PIECE_VALUES.get(target.kind, 0)})"
+        headline = f"Priority Target: Player {target.capitalize()} (Value {HUNT_VALUES.get(target, 0)})"
     lines = [heading, headline, "", "Candidate Moves:"]
     if not scored:
         lines.append("none")
     for item in scored:
-        lines.append(f"{item.mover_kind.capitalize()} {square_name(item.move.from_col, item.move.from_row)} -> {square_name(item.move.to_col, item.move.to_row)} | Score: {item.score}")
+        lines.append(
+            f"{item.mover_kind.capitalize()} {square_name(item.move.from_col, item.move.from_row)} -> {square_name(item.move.to_col, item.move.to_row)} | {trait_title(item.personality).title()} | Score: {item.score}"
+        )
     lines.append("")
     if picked is None:
         lines.append("Selected: none")

@@ -1,6 +1,7 @@
 import random
 
 from config.settings import BOARD_SIZE, DEPLOY_ROWS, MAX_LEVEL, STARTING_GOLD, VICTORY_GOLD
+from ai.trait_assignment import assign_battle_personality
 from game.army_manager import ArmyManager
 from game.battle_summary import build_battle_summary, interest_amount, white_board_pieces
 from game.battle_rules import BattleRules
@@ -25,11 +26,13 @@ class RunState:
         self.army.add_starters()
         self.traits = TraitManager(self)
         self.relics = RelicManager(self)
+        self.relic_display_order: list[str] = []
         self.golden_reward = 0
         self.shop = ShopManager(self.rng, shop_relic_ids())
         self.deployment = DeploymentManager()
         self.enemies: list[Piece] = []
         self.battle: BattleSession | None = None
+        self.enemy_trait: str | None = None
         self.phase = "preview"
         self.notice = ""
         self.selected_piece_id: int | None = None
@@ -50,6 +53,7 @@ class RunState:
 
     def prepare_level(self) -> None:
         self.enemies = spawn_enemies(self.level)
+        assign_battle_personality(self, fresh=True)
         self.deployment = DeploymentManager()
         self.battle = None
         self.selected_piece_id = None
@@ -197,6 +201,7 @@ class RunState:
             self.notice = "Deploy the King" if king is None or king.id not in self.deployment.placed else "Formation invalid"
             return False
         self._remember_formation()
+        trait = assign_battle_personality(self)
         self.battle_roster = tuple((piece.id, piece.kind, piece.trait) for piece in self.army.pieces)
         rules = BattleRules()
         self.battle = BattleSession(
@@ -205,6 +210,7 @@ class RunState:
             self.enemies,
             dispatcher=self.relics.dispatcher,
             rules=rules,
+            enemy_trait=trait,
         )
         rules.bind(lambda: self.battle.game.board if self.battle is not None else None)
         self.relics.context.rules = rules
@@ -289,6 +295,30 @@ class RunState:
 
     def restart(self) -> "RunState":
         return RunState.new()
+
+    def ordered_relics(self) -> list:
+        by_id = {item.instance_id: item for item in self.relics.owned}
+        ordered = []
+        seen: set[str] = set()
+        for instance_id in self.relic_display_order:
+            item = by_id.get(instance_id)
+            if item is None or instance_id in seen:
+                continue
+            ordered.append(item)
+            seen.add(instance_id)
+        leftovers = [item for item in self.relics.owned if item.instance_id not in seen]
+        leftovers.sort(key=lambda item: item.acquisition_order)
+        ordered.extend(leftovers)
+        self.relic_display_order = [item.instance_id for item in ordered]
+        return ordered
+
+    def set_relic_order(self, instance_ids: list[str]) -> None:
+        known = {item.instance_id: item for item in self.relics.owned}
+        cleaned = [instance_id for instance_id in instance_ids if instance_id in known]
+        for item in sorted(self.relics.owned, key=lambda item: item.acquisition_order):
+            if item.instance_id not in cleaned:
+                cleaned.append(item.instance_id)
+        self.relic_display_order = cleaned
 
     def buy_piece(self) -> str | None:
         gold, notice = self.shop.buy_piece(self.gold, self.army)

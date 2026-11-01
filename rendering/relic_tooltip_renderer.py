@@ -8,14 +8,15 @@ from rendering.relic_card import wrap_text
 PARCHMENT = (236, 220, 196)
 
 
-def tooltip_lines(relic: RelicDef) -> list[tuple[str, bool]]:
-    return [
-        (f"Name: {relic.name}", True),
-        ("Saying:", True),
+def tooltip_lines(relic: RelicDef, price: int | None = None) -> list[tuple[str, bool]]:
+    lines = [
+        (relic.name, True),
         (f"\"{relic.flavor_text}\"", False),
-        ("Effect:", True),
         (relic.description, False),
     ]
+    if price is not None:
+        lines.append((f"{price} Gold", True))
+    return lines
 
 
 def draw_relic_tooltip(
@@ -23,18 +24,23 @@ def draw_relic_tooltip(
     relic: RelicDef,
     anchor: pygame.Rect,
     band: pygame.Rect | None = None,
+    price: int | None = None,
+    avoid: pygame.Rect | None = None,
 ) -> pygame.Rect:
     window = screen.get_size()
     width = _tooltip_width(window, band or anchor)
     body = get_font(15, bold=False)
-    title = get_font(16, bold=True)
+    title = get_font(18, bold=True)
     wrapped: list[tuple[str, bool]] = []
-    for text, strong in tooltip_lines(relic):
+    for text, strong in tooltip_lines(relic, price):
         font = title if strong else body
-        for line in wrap_text(font, text, width - 20) or [""]:
+        for line in wrap_text(font, text, width - 24) or [""]:
             wrapped.append((line, strong))
-    height = 16 + sum((title.get_height() if strong else body.get_height()) + 2 for _line, strong in wrapped)
+    height = 18 + sum((title.get_height() if strong else body.get_height()) + 3 for _line, strong in wrapped)
     panel = _place(anchor, width, height, window, band or anchor)
+    if avoid is not None and panel.colliderect(avoid):
+        panel.top = avoid.bottom + 8
+        panel.clamp_ip(pygame.Rect(8, 8, max(1, window[0] - 16), max(1, window[1] - 16)))
     shadow = pygame.Surface((panel.w, panel.h), pygame.SRCALPHA)
     shadow.fill((16, 10, 6, 90))
     screen.blit(shadow, (panel.x + 3, panel.y + 4))
@@ -44,8 +50,8 @@ def draw_relic_tooltip(
     for line, strong in wrapped:
         font = title if strong else body
         color = PARCHMENT if strong else (226, 210, 188)
-        _blit_text(screen, line, font, color, midleft=(panel.x + 10, y + font.get_height() // 2))
-        y += font.get_height() + 2
+        _blit_text(screen, line, font, color, midleft=(panel.x + 12, y + font.get_height() // 2))
+        y += font.get_height() + 3
     return panel
 
 

@@ -21,8 +21,9 @@ def build_battle_board(army: ArmyManager, deployment: DeploymentManager, enemies
 
 
 class BattleSession:
-    def __init__(self, army: ArmyManager, deployment: DeploymentManager, enemies: list[Piece], dispatcher=None, rules=None) -> None:
+    def __init__(self, army: ArmyManager, deployment: DeploymentManager, enemies: list[Piece], dispatcher=None, rules=None, enemy_trait: str | None = None) -> None:
         self.rules = rules
+        self.enemy_trait = enemy_trait
         move_filter = None if rules is None else rules.filter_moves
         on_turn_end = None if rules is None else rules.spend
         self.game = Game(
@@ -32,6 +33,10 @@ class BattleSession:
             move_filter=move_filter,
             on_turn_end=on_turn_end,
         )
+        if enemy_trait:
+            for piece in self.game.board.pieces:
+                if piece.color == "black":
+                    piece.ai_trait = enemy_trait
         self.outcome: str | None = None
 
     def click(self, col: int, row: int) -> None:

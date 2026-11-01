@@ -9,10 +9,8 @@ def handle_shop_click(run: RunState, pos: tuple[int, int], layout: ShopLayout) -
         run.reroll_shop()
         return
     if layout.buys[0].collidepoint(pos):
-        run.buy_piece()
-        return
-    if layout.buys[1].collidepoint(pos) or layout.cards[1].collidepoint(pos):
-        run.buy_relic()
+        if run.shop.piece_sold:
+            run.buy_piece()
         return
     if layout.buys[2].collidepoint(pos):
         run.buy_army()

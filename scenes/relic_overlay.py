@@ -22,11 +22,9 @@ class RelicOverlay:
         self.shop_hover = False
         self.result = None
 
-    def button_rect(self, window: tuple[int, int]) -> pygame.Rect:
-        return pygame.Rect(16, 10, 140, 36)
-
     def wants(self, pos: tuple[int, int], window: tuple[int, int]) -> bool:
-        return self.open or self.button_rect(window).collidepoint(pos)
+        del pos, window
+        return self.open
 
     def panel(self, window: tuple[int, int]) -> pygame.Rect:
         rect = pygame.Rect(0, 0, min(1180, window[0] - 48), min(820, window[1] - 48))
@@ -68,17 +66,8 @@ class RelicOverlay:
             self.shop_hover = True
 
     def on_click(self, run: RunState, pos: tuple[int, int], window: tuple[int, int]) -> bool:
-        button = self.button_rect(window)
         if not self.open:
-            if button.collidepoint(pos):
-                self.open = True
-                self.picking = False
-                self.result = None
-                return True
             return False
-        if button.collidepoint(pos):
-            self._close()
-            return True
         panel = self.panel(window)
         if not panel.collidepoint(pos):
             self._close()
@@ -128,10 +117,9 @@ class RelicOverlay:
         self.result = None
 
     def draw(self, screen: pygame.Surface, assets: AssetManager, run: RunState, shop: ShopLayout | None) -> None:
-        window = screen.get_size()
-        draw_button(screen, self.button_rect(window), "Relics", font_size=18)
         if not self.open:
             return
+        window = screen.get_size()
         shade = pygame.Surface(window, pygame.SRCALPHA)
         shade.fill((12, 8, 6, 220))
         screen.blit(shade, (0, 0))

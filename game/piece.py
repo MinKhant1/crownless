@@ -10,6 +10,7 @@ class Piece:
     row: int | None = None
     has_moved: bool = False
     trait: str | None = None
+    ai_trait: str | None = None
 
     def copy(self) -> "Piece":
         return replace(self)

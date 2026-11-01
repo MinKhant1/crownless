@@ -26,7 +26,7 @@ def render_battle(screen: pygame.Surface, assets: AssetManager, game: Game, layo
     if show_turn:
         draw_turn(screen, game, layout)
     if run is not None:
-        draw_left_sidebar(screen, run, layout)
+        draw_left_sidebar(screen, run, layout, assets, game)
         if run.visual_pieces is None:
             panel = army if army is not None else ArmyPanel()
             panel.draw(screen, assets, run, layout)

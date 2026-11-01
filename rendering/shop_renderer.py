@@ -10,14 +10,15 @@ from config.settings import (
     SCENE_SLIDE_TIME,
     SHOP_BUY,
     SHOP_CARD_STAGGER,
-    SHOP_ICON,
     TURN_CHECK,
 )
 from game.transitions.easing import ease_out_cubic
 from game.relics.relic_data import relic_by_id
 from game.run_state import RunState
-from rendering.relic_card import CARD_RATIO, RelicCardRenderer
+from rendering.relic_card import RelicCardRenderer
 from rendering.relic_flip import shop_reveal
+from rendering.shop_piece_hand import piece_box, shop_piece
+from rendering.shop_relic_hand import relic_offer_slot, shop_hand
 from rendering.asset_manager import AssetManager
 from rendering.hud_renderer import _blit_text, draw_background, draw_button, draw_relic_glow, get_font
 from rendering.shop_layout import ShopLayout
@@ -63,6 +64,16 @@ def draw_shop(
         center=layout.gold.center,
     )
     draw_button(screen, layout.continue_button, "Continue", font_size=max(18, layout.continue_button.h // 2))
+    offer_dx, offer_alpha = _card_motion(entrance, 1)
+    piece_dx, piece_alpha = _card_motion(entrance, 0)
+    shop_piece.prepare(assets, run, layout)
+    relic_dragging = shop_hand.dragging
+    if shop_piece.dragging and not relic_dragging:
+        shop_hand.paint(screen, assets, run, layout, offer_dx, offer_alpha)
+        shop_piece.paint(screen, piece_dx, piece_alpha, run, layout)
+    else:
+        shop_piece.paint(screen, piece_dx, piece_alpha, run, layout)
+        shop_hand.paint(screen, assets, run, layout, offer_dx, offer_alpha)
     if run.notice:
         color = TURN_CHECK if run.notice == "Not enough gold" else (236, 214, 170)
         _blit_text(screen, run.notice, get_font(20, bold=True), color, center=layout.notice.center)
@@ -106,29 +117,35 @@ def _draw_shop_card(
         buy = buy.move(-bounds.x, -bounds.y)
         origin = bounds.topleft
     tag_font = get_font(max(16, tag.h * 0.34), bold=True)
-    target.blit(assets.scaled("price_tag", (tag.w, tag.h)), tag.topleft)
-    _blit_text(target, price, tag_font, DARK_TEXT, center=tag.center)
+    if index != 1:
+        target.blit(assets.scaled("price_tag", (tag.w, tag.h)), tag.topleft)
+        _blit_text(target, price, tag_font, DARK_TEXT, center=tag.center)
     target.blit(card_image, card.topleft)
     if index == 1:
         _draw_relic_offer(target, assets, card, run)
     else:
-        _draw_offer(target, assets, card, label, "", index, run)
+        _draw_offer(target, assets, card, label, "", index, run, hold_piece=index == 0 and shop_piece.live(run))
     relic_ready = run.shop.relic_id is not None and not run.shop.relic_sold
     sold = (run.shop.piece_sold, run.shop.relic_sold and run.shop.relic_id is not None, run.shop.army_sold)
     enabled = (not run.shop.piece_sold, relic_ready, not run.shop.army_sold)
-    if index == 1 and run.shop.relic_id is None:
+    if index == 0 and shop_piece.live(run):
+        plaque = None
+    elif index == 1 and enabled[1] and not sold[1]:
+        plaque = None
+    elif index == 1 and run.shop.relic_id is None:
         plaque = "None"
     elif sold[index]:
         plaque = "Sold"
     else:
         plaque = "Buy"
-    _blit_text(
-        target,
-        plaque,
-        get_font(max(15, card.h * 0.07), bold=True),
-        LIGHT_TEXT if enabled[index] or sold[index] else (176, 164, 148),
-        center=buy.center,
-    )
+    if plaque is not None:
+        _blit_text(
+            target,
+            plaque,
+            get_font(max(15, card.h * 0.07), bold=True),
+            LIGHT_TEXT if enabled[index] or sold[index] else (176, 164, 148),
+            center=buy.center,
+        )
     if sold[index]:
         shade = pygame.Surface(card.size, pygame.SRCALPHA)
         shade.fill((24, 14, 10, 130))
@@ -166,17 +183,7 @@ def _draw_reroll(screen: pygame.Surface, assets: AssetManager, layout: ShopLayou
 
 
 def _relic_slot(card: pygame.Rect) -> pygame.Rect:
-    top = card.y + int(card.h * 0.04)
-    bottom = card.y + int(card.h * SHOP_BUY[1]) - max(2, int(card.h * 0.02))
-    height = max(1, bottom - top)
-    width = max(1, int(round(height * CARD_RATIO)))
-    limit = max(1, int(card.w * 0.92))
-    if width > limit:
-        width = limit
-        height = max(1, int(round(width / CARD_RATIO)))
-    rect = pygame.Rect(0, 0, width, height)
-    rect.midtop = (card.centerx, top)
-    return rect
+    return relic_offer_slot(card)
 
 
 def _draw_relic_offer(screen: pygame.Surface, assets: AssetManager, card: pygame.Rect, run: RunState) -> None:
@@ -186,14 +193,11 @@ def _draw_relic_offer(screen: pygame.Surface, assets: AssetManager, card: pygame
     if definition is None:
         _blit_card_face(screen, assets, None, slot, False)
         return
-    face_up = shop_reveal.face_up
-    _blit_card_face(screen, assets, definition, slot, face_up)
-    if _SHOP_HOVER and face_up:
+    if not run.shop.relic_sold and shop_reveal.face_up and shop_reveal.progress >= 1.0:
+        return
+    _blit_card_face(screen, assets, definition, slot, shop_reveal.face_up)
+    if _SHOP_HOVER and shop_reveal.face_up:
         draw_relic_glow(screen, slot)
-    if run.gold < RELIC_PRICE and not run.shop.relic_sold:
-        shade = pygame.Surface(slot.size, pygame.SRCALPHA)
-        shade.fill((20, 12, 8, 70))
-        screen.blit(shade, slot.topleft)
 
 
 def shop_relic_rect(layout: ShopLayout) -> pygame.Rect:
@@ -244,6 +248,7 @@ def _draw_offer(
     subtitle: str,
     index: int,
     run: RunState,
+    hold_piece: bool = False,
 ) -> None:
     text_width = int(card.w * 0.78)
     name_font = _fit_font(label, text_width, max(13, int(card.h * 0.07)), True)
@@ -253,19 +258,11 @@ def _draw_offer(
     if sub_font is not None:
         text_block += sub_font.get_height() + 1
     name_center = buy_top - text_block + name_font.get_height() // 2 - 2
-    icon_x, icon_y, icon_w, icon_h = SHOP_ICON
-    box = pygame.Rect(
-        card.x + int(card.w * icon_x),
-        card.y + int(card.h * icon_y),
-        int(card.w * icon_w),
-        int(card.h * icon_h),
-    )
-    limit = name_center - name_font.get_height() // 2 - 4
-    if box.bottom > limit:
-        box.height = max(12, limit - box.y)
+    box = piece_box(card, label)
     if index == 0:
-        image = assets.fitted(f"white_{run.shop.piece_kind}", box.w, box.h)
-        screen.blit(image, image.get_rect(center=box.center))
+        if not hold_piece:
+            image = assets.fitted(f"white_{run.shop.piece_kind}", box.w, box.h)
+            screen.blit(image, image.get_rect(center=box.center))
     elif index == 1:
         image = assets.fitted("crown", int(box.w * 0.72), int(box.h * 0.72))
         screen.blit(image, image.get_rect(center=box.center))

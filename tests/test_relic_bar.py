@@ -63,22 +63,28 @@ class RelicBarTests(unittest.TestCase):
         self.assertEqual(bar.scroll, 0)
         self.assertEqual(len(run.relics.owned), 6)
 
-    def test_hover_lifts_the_card_and_click_opens_details(self):
+    def test_hover_lifts_the_card_and_click_toggles_selection(self):
         run = RunState.new(seed=4)
         owned = run.relics.acquire("recruitment")
         bar = RelicBar()
         layout = build_layout(1280, 900)
+        bar.update(0, run, layout)
         slot = bar.placements(run, layout, 0)[0]
         bar.on_motion(run, slot.rest.center, layout, now=0)
-        lifted = bar.placements(run, layout, 0)[0]
         self.assertEqual(bar.hover_id, owned.instance_id)
-        self.assertEqual(lifted.drawn.size, lifted.rest.size)
+        self.assertIsNone(bar.selected_card_id)
+        bar.update(1, run, layout)
+        lifted = bar.placements(run, layout, 0)[0]
+        self.assertLessEqual(lifted.drawn.bottom, slot.rest.bottom - 8)
+        self.assertGreater(lifted.drawn.h, slot.rest.h)
         bar.on_left_down(slot.rest.center, run, layout, now=0)
         bar.on_left_up(run, slot.rest.center, layout, (1280, 900), now=0)
-        chosen = bar.consume_click()
-        self.assertIsNotNone(chosen)
-        self.assertEqual(chosen.owned.instance_id, owned.instance_id)
+        self.assertEqual(bar.selected_card_id, owned.instance_id)
+        self.assertIsNone(bar.consume_click())
         self.assertIsNone(bar.detail_id)
+        bar.on_left_down(slot.rest.center, run, layout, now=0)
+        bar.on_left_up(run, slot.rest.center, layout, (1280, 900), now=0)
+        self.assertIsNone(bar.selected_card_id)
         self.assertFalse(bar.on_right_click())
         self.assertIsNone(square_at(layout, slot.rest.center))
         board_point = layout.square_rect(0, 1).center
@@ -88,11 +94,11 @@ class RelicBarTests(unittest.TestCase):
     def test_tooltip_uses_the_relic_text(self):
         relic = relic_by_id("blood_contract")
         lines = [text for text, _strong in tooltip_lines(relic)]
-        self.assertEqual(lines[0], "Name: Blood Contract")
-        self.assertEqual(lines[1], "Saying:")
-        self.assertEqual(lines[2], '"Signed in red. Paid in kind."')
-        self.assertEqual(lines[3], "Effect:")
-        self.assertEqual(lines[4], "Sacrifice a piece. One random piece becomes a random Special Piece.")
+        self.assertEqual(lines[0], "Blood Contract")
+        self.assertEqual(lines[1], '"Signed in red. Paid in kind."')
+        self.assertEqual(lines[2], "Sacrifice a piece. One random piece becomes a random Special Piece.")
+        priced = [text for text, _strong in tooltip_lines(relic, price=7)]
+        self.assertEqual(priced[-1], "7 Gold")
 
     def test_used_and_disabled_states_follow_the_relic(self):
         run = RunState.new(seed=5)
@@ -209,6 +215,26 @@ class RelicBarDrawTests(unittest.TestCase):
         bar.draw_cards(screen, self.assets, one, layout, now=200)
         self.assertGreater(bar.pulse(owned.instance_id, 200), 0)
         self.assertEqual(bar.pulse(owned.instance_id, 5000), 0)
+
+    def test_dragged_card_is_painted_above_the_board(self):
+        layout = build_layout(1280, 900)
+        screen = pygame.Surface((1280, 900))
+        screen.fill((10, 20, 30))
+        run = RunState.new(seed=11)
+        run.relics.acquire("banner")
+        bar = RelicBar()
+        bar.update(0, run, layout)
+        slot = bar.placements(run, layout, 0)[0]
+        board = layout.board.center
+        bar.on_left_down(slot.drawn.center, run, layout, now=0)
+        bar.on_motion(run, board, layout, now=0, held=True)
+        bar.update(1, run, layout)
+        self.assertTrue(bar.dragging)
+        before = screen.get_at(board)
+        bar.draw_cards(screen, self.assets, run, layout, now=0)
+        self.assertEqual(screen.get_at(board), before)
+        bar.draw_overlay(screen, self.assets, run, layout, now=0)
+        self.assertNotEqual(screen.get_at(board), before)
 
 
 if __name__ == "__main__":
