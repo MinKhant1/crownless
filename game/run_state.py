@@ -113,7 +113,7 @@ class RunState:
                 return True
         if not open_squares:
             return False
-        rng = random.Random((self.seed, self.level, piece.id))
+        rng = random.Random(f"{self.seed}:{self.level}:{piece.id}")
         self.deployment.placed[piece.id] = rng.choice(open_squares)
         return True
 

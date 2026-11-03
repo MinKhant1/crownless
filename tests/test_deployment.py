@@ -32,6 +32,17 @@ class DeploymentTests(unittest.TestCase):
         ids = set(first.deployment.placed)
         self.assertEqual(ids, {piece.id for piece in first.army.pieces})
 
+    def test_auto_deploy_seats_pieces_whose_home_squares_are_full(self):
+        run = RunState.new(seed=4)
+        run.army.capacity = 11
+        for _ in range(6):
+            run.army.create("knight")
+        run.begin_deployment()
+        squares = list(run.deployment.placed.values())
+        self.assertEqual(len(squares), 12)
+        self.assertEqual(len(squares), len(set(squares)))
+        self.assertTrue(run.validate_deployment())
+
     def test_reposition_swap_reserve_and_reset(self):
         run = RunState.new(seed=6)
         gold = run.gold

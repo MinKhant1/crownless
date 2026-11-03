@@ -187,11 +187,11 @@ def _compose_face(assets: AssetManager, relic: RelicDef, width: int, height: int
     else:
         pygame.draw.rect(card, (236, 226, 206), card.get_rect(), border_radius=max(6, width // 18))
     text_width = max(1, int(width * (1 - TEXT_MARGIN * 2)))
-    title_font, title_lines = _fit_block(relic.name.upper(), text_width, int(height * 0.055), 2, True, single=True)
+    title_font, title_lines, _ = _fit_block(relic.name.upper(), text_width, int(height * 0.055), 2, True, single=True)
     flavour = f"\u201c{_protect(relic.flavor_text.upper())}\u201d"
     effect = _protect(relic.description.upper())
-    flavour_font, flavour_lines = _fit_block(flavour, text_width, int(height * 0.034), 2, True, single=True)
-    effect_font, effect_lines = _fit_block(effect, text_width, int(height * 0.027), 3, False)
+    flavour_font, flavour_lines, _ = _fit_block(flavour, text_width, int(height * 0.034), 2, True, single=True)
+    effect_font, effect_lines, effect_size = _fit_block(effect, text_width, int(height * 0.027), 3, False)
     title_rect = _band(width, height, title_font, title_lines, TITLE_Y)
     flavour_rect = _band(width, height, flavour_font, flavour_lines, FLAVOUR_Y)
     effect_rect = _band(width, height, effect_font, effect_lines, EFFECT_Y)
@@ -216,7 +216,7 @@ def _compose_face(assets: AssetManager, relic: RelicDef, width: int, height: int
     _blit_art(card, assets, relic, art)
     _draw_title(card, title_lines, title_font, title_rect)
     _draw_lines(card, flavour_lines, flavour_font, flavour_font, flavour_rect)
-    _draw_lines(card, effect_lines, effect_font, _serif(max(7, effect_font.get_point_size()), True), effect_rect)
+    _draw_lines(card, effect_lines, effect_font, _serif(effect_size, True), effect_rect)
     return card
 
 
@@ -234,24 +234,25 @@ def _fit_block(
     max_lines: int,
     bold: bool,
     single: bool = False,
-) -> tuple[pygame.font.Font, list[str]]:
+) -> tuple[pygame.font.Font, list[str], int]:
     plain = text.replace("\u00a0", " ")
     size = max(7, int(start))
     floor = max(7, int(start * 0.7)) if single else 7
     while size > floor:
         font = _serif(size, bold)
         if font.size(plain)[0] <= width:
-            return font, [text]
+            return font, [text], size
         if not single:
             lines = wrap_text(font, text, width)
             if 0 < len(lines) <= max_lines:
-                return font, lines
+                return font, lines, size
         size -= 1
-    font = _serif(max(7, floor if single else size), bold)
+    size = max(7, floor if single else size)
+    font = _serif(size, bold)
     if font.size(plain)[0] <= width:
-        return font, [text]
+        return font, [text], size
     lines = wrap_text(font, text, max(1, width)) or [text]
-    return font, lines[: max(1, max_lines)]
+    return font, lines[: max(1, max_lines)], size
 
 
 def _protect(text: str) -> str:

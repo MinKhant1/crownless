@@ -2,28 +2,46 @@
 
 A 6×6 chess roguelike. A run is a short campaign: preview the enemy army, deploy your pieces, fight, then spend gold in the shop before the next level.
 
-## Run
+## Setup
 
-From the project folder:
+Needs Python 3.10 or newer. The game uses pygame-ce, which imports as `pygame` like the original package, so the two must never be installed in the same `.venv`. From the project folder, once:
+
+macOS or Linux:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+Windows (PowerShell):
 
 ```powershell
-.\.venv\Scripts\python.exe main.py
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
+
+If your `.venv` already has the original `pygame`, run `pip uninstall -y pygame` with the same Python before installing.
+
+## Run
+
+macOS or Linux: `.venv/bin/python main.py`
+
+Windows: `.\.venv\Scripts\python.exe main.py`
 
 The window opens at 1440×900 and can be resized. 1280×720 is supported. Art is loaded from paths next to `main.py`, so the working directory does not matter.
 
 ## Tests
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
+macOS or Linux: `.venv/bin/python -m unittest discover -s tests -v`
+
+Windows: `.\.venv\Scripts\python.exe -m unittest discover -s tests -v`
 
 ## Flow
 
 1. A new run starts with one pawn, knight, bishop, rook, queen, and king, plus 5 gold.
 2. Level preview shows the enemy formation.
 3. Deploy fills ranks 1 and 2 from the army. The king is always included and does not use an army slot. Other pieces fill the army capacity, which starts at 5. Survivors keep the squares you chose last battle. The battle screen is three columns: battle status on the left, the board in the center, and your army on the right. You can swap pieces, replace one from the reserve, or press Reset Formation before Start Battle.
-4. Battle is fought by hand for both sides. Clear every enemy piece to win. If your king is captured, the run ends.
+4. You play white. Black is played by the enemy AI, which gets a personality each battle. Clear every enemy piece to win. If your king is captured, the run ends.
 5. A win awards 3 gold and keeps the board up. A level-complete banner shows the reward, then Continue slides the board off to the left while the shop slides in from the right.
 6. The shop Continue button slides the shop away and brings in the next level, with that enemy army already on the board.
 7. Starting the battle keeps the board where it is and shows a short Battle Start banner.
@@ -237,7 +255,7 @@ The board is a copy. Traits are assigned with `TraitManager` onto those copies. 
 
 - Shop: click Buy on a card, click the reroll board, or click Continue.
 - Deployment: click a piece in the army, then click a highlighted square. Click a deployed piece again to take it back. You can also drag a piece onto a square. Start Battle begins the fight once the king is deployed.
-- Battle: click a piece of the side to move, then a highlighted square. Green dots are empty squares. Red outlines are captures. Both sides use the mouse.
+- Battle: click one of your pieces, then a highlighted square. Green dots are empty squares. Red outlines are captures. Black moves on its own.
 - Relics opens the collection. The owned relics also sit above the board. Hover a card for its text, left-click it for a closer look, and right-click to close that view. Activate Blood Contract from that card, or from the collection, before the battle.
 - The mouse wheel over the relic row scrolls when more than five relics are owned.
 - F3 toggles the battle debug overlay.
