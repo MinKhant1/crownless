@@ -5,6 +5,7 @@ from rendering.enemy_tags import (
     HEADING,
     IVORY,
     battle_font,
+    battle_label,
     draw_personalities,
     heading_block,
     heading_font,
@@ -26,7 +27,7 @@ def draw_left_sidebar(screen: pygame.Surface, run, layout, assets=None, game=Non
     _draw_wood(screen, rect)
     for section in (battle, personality, resources, army):
         _divider(screen, rect, section.bottom)
-    _blit_text(screen, f"BATTLE {run.level}", battle_font(rect.w), IVORY, center=battle.center)
+    _blit_text(screen, battle_label(run), battle_font(rect.w), IVORY, center=battle.center)
     _draw_heading(screen, "ENEMY PERSONALITY", personality)
     _draw_heading(screen, "RESOURCES", resources)
     _draw_gold(screen, assets, run, resources)

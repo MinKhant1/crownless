@@ -10,7 +10,7 @@ from game.battle_rules import BattleRules
 from game.board import Board, CaptureRecord
 from game.piece import Piece
 from game.run_state import RunState
-from rendering.enemy_tags import personality_layout, sidebar_anchors
+from rendering.enemy_tags import battle_label, personality_layout, sidebar_anchors
 from rendering.layout import build_layout
 
 
@@ -245,3 +245,9 @@ class ShopPreviewTests(unittest.TestCase):
         )
         self.assertTrue(all(piece.ai_trait == trait for piece in enemies))
         self.assertTrue(all(piece.ai_trait == saved_trait for piece in run.enemies))
+
+    def test_shop_labels_the_battle_it_previews(self):
+        run = RunState.new(seed=21)
+        self.assertEqual(battle_label(run), f"BATTLE {run.level}")
+        run.phase = "shop"
+        self.assertEqual(battle_label(run), f"BATTLE {run.level + 1}")
