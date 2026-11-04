@@ -8,6 +8,7 @@ from game.piece import Piece
 from game.run_state import RunState
 from game.transitions.easing import ease_out_cubic
 from rendering.asset_manager import AssetManager
+from rendering import style
 from rendering.hud_renderer import _blit_text, get_font
 from rendering.piece_visual_effects import figurines
 
@@ -120,13 +121,12 @@ def _place(screen: pygame.Surface, plate: pygame.Surface, rect: pygame.Rect, rev
 
 
 def _panel_surface(rect: pygame.Rect) -> pygame.Surface:
+    pad = 18
     plate = pygame.Surface((max(1, rect.w), max(1, rect.h)), pygame.SRCALPHA)
-    body = plate.get_rect()
-    pygame.draw.rect(plate, (20, 12, 8, 90), body.move(0, 8), border_radius=18)
-    pygame.draw.rect(plate, PARCHMENT, body, border_radius=16)
-    pygame.draw.rect(plate, PARCHMENT_EDGE, body, width=3, border_radius=16)
-    inner = body.inflate(-12, -12)
-    pygame.draw.rect(plate, BRASS, inner, width=1, border_radius=12)
+    sheet = style.parchment(None, (rect.w - 4, rect.h - 4), seed=7)
+    shadow = style.soft_shadow(sheet.get_size(), radius=8, spread=pad, alpha=150)
+    plate.blit(shadow, (2 - pad, 2 - pad + 6))
+    plate.blit(sheet, (2, 2))
     return plate
 
 
@@ -138,15 +138,14 @@ def _draw_reward(
     reward: float,
     frames: SummaryFrames,
 ) -> None:
-    title = get_font(40 if plate.get_width() >= 520 else 32, bold=True)
-    _blit_text(plate, "BATTLE WON", title, INK, center=(plate.get_width() // 2, 46))
-    pygame.draw.line(plate, BRASS, (36, 74), (plate.get_width() - 36, 74), 2)
+    title = style.title_font(40 if plate.get_width() >= 520 else 32, bold=True)
+    style.text(plate, "Battle Won", title, style.INK, shadow=(255, 246, 222, 160), center=(plate.get_width() // 2, 44))
+    style.ornament_rule(plate, (plate.get_width() // 2, 76), plate.get_width() - 72, style.GOLD_DIM)
     band = pygame.Rect(28, 88, plate.get_width() - 56, 70)
-    pygame.draw.rect(plate, GOLD_BAND, band, border_radius=12)
-    pygame.draw.rect(plate, (232, 196, 110), band, width=2, border_radius=12)
+    plate.blit(style.plaque(band.size, "selected"), band.topleft)
     shown = summary.total_gold if show_button else int(round(summary.total_gold * min(1.0, max(0.0, reward))))
-    _blit_text(plate, "Cash Out", get_font(16, bold=False), (236, 210, 160), center=(band.centerx, band.y + 20))
-    _blit_text(plate, f"+{shown} Gold", get_font(32, bold=True), CREAM, center=(band.centerx, band.y + 46))
+    style.text(plate, "Cash Out", style.title_font(15, bold=False), (236, 206, 150), center=(band.centerx, band.y + 20))
+    style.text(plate, f"+{shown} Gold", style.title_font(30, bold=True), style.GOLD_BRIGHT, shadow=(10, 4, 2, 220), center=(band.centerx, band.y + 46))
     y = band.bottom + 16
     for index, row in enumerate(summary.rows):
         amount = _row_alpha(elapsed, index)
@@ -191,33 +190,27 @@ def _draw_row(plate: pygame.Surface, row: RewardRow, y: int, height: int, alpha:
             pygame.draw.circle(plate, (176, 146, 104), (x, dot_y), 1)
     if alpha < 0.99:
         veil = pygame.Surface((plate.get_width() - 40, height), pygame.SRCALPHA)
-        veil.fill((236, 220, 186, int(255 * (1.0 - alpha))))
+        veil.fill((226, 206, 168, int(255 * (1.0 - alpha))))
         plate.blit(veil, (20, y))
 
 
 def _draw_total(plate: pygame.Surface, summary: BattleSummary, y: int, alpha: float) -> None:
     font = get_font(20, bold=True)
     bar = pygame.Rect(24, y + 4, plate.get_width() - 48, 36)
-    pygame.draw.rect(plate, (214, 186, 140), bar, border_radius=8)
+    pygame.draw.rect(plate, (206, 178, 130), bar)
+    pygame.draw.line(plate, style.GOLD_DIM, bar.topleft, (bar.right - 1, bar.top))
+    pygame.draw.line(plate, style.GOLD_DIM, (bar.left, bar.bottom - 1), (bar.right - 1, bar.bottom - 1))
     _blit_text(plate, "Total Gold Earned", font, INK, midleft=(bar.x + 12, bar.centery))
     amount = str(summary.total_gold)
     _blit_text(plate, amount, font, INK, midleft=(bar.right - 16 - font.size(amount)[0], bar.centery))
     if alpha < 0.99:
         veil = pygame.Surface((bar.w, bar.h), pygame.SRCALPHA)
-        veil.fill((236, 220, 186, int(255 * (1.0 - alpha))))
+        veil.fill((226, 206, 168, int(255 * (1.0 - alpha))))
         plate.blit(veil, bar.topleft)
 
 
 def _draw_continue(plate: pygame.Surface, rect: pygame.Rect, screen_rect: pygame.Rect) -> None:
-    pointer = pygame.mouse.get_pos() if pygame.display.get_surface() is not None else (-1, -1)
-    hovered = screen_rect.collidepoint(pointer)
-    pressed = hovered and pygame.mouse.get_pressed()[0]
-    drawn = rect.move(0, 2) if pressed else rect
-    pygame.draw.rect(plate, (36, 20, 10), drawn.move(0, 3), border_radius=12)
-    fill = (138, 84, 34) if hovered else (98, 58, 28)
-    pygame.draw.rect(plate, fill, drawn, border_radius=12)
-    pygame.draw.rect(plate, (232, 196, 110), drawn, width=2, border_radius=12)
-    _blit_text(plate, "Continue", get_font(22, bold=True), LIGHT_TEXT, center=drawn.center)
+    style.draw_plaque_button(plate, rect, "Continue", style.button_state(screen_rect), 22)
 
 
 def _fallen_icons(summary: BattleSummary) -> list[tuple[str, str | None]]:

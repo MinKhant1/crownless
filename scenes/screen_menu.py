@@ -1,5 +1,6 @@
 import pygame
 
+from rendering import style
 from rendering.hud_renderer import _blit_text, draw_button, get_font
 from rendering.layout import Layout
 from rendering.trait_style import trait_style
@@ -63,17 +64,15 @@ class ScreenMenu:
         shade.fill((20, 12, 8, 120))
         screen.blit(shade, (0, 0))
         panel, buttons = _geometry(screen.get_size(), self.mode)
-        pygame.draw.rect(screen, (48, 30, 20), panel, border_radius=16)
-        inner = panel.inflate(-8, -8)
-        pygame.draw.rect(screen, (232, 214, 184), inner, border_radius=12)
-        pygame.draw.rect(screen, (214, 170, 90), panel, width=2, border_radius=16)
+        style.drop_shadow(screen, panel, offset=10, spread=18, alpha=150)
+        screen.blit(style.framed_parchment(None, panel.size, seed=11, border=12), panel.topleft)
         if self.mode == "menu":
-            _blit_text(screen, "Main Menu", get_font(28, bold=True), (62, 40, 28), center=(panel.centerx, panel.y + 48))
-            _blit_text(screen, "Restart this run?", get_font(18, bold=False), (92, 64, 42), center=(panel.centerx, panel.y + 86))
+            style.text(screen, "Main Menu", style.title_font(28, bold=True), style.INK, center=(panel.centerx, panel.y + 46))
+            style.text(screen, "Restart this run?", style.body_font(18), style.INK_SOFT, center=(panel.centerx, panel.y + 84))
         else:
             state = "On" if trait_style.strong else "Off"
-            _blit_text(screen, "Options", get_font(28, bold=True), (62, 40, 28), center=(panel.centerx, panel.y + 48))
-            _blit_text(screen, f"Strong piece marks  {state}", get_font(18, bold=False), (92, 64, 42), center=(panel.centerx, panel.y + 86))
+            style.text(screen, "Options", style.title_font(28, bold=True), style.INK, center=(panel.centerx, panel.y + 46))
+            style.text(screen, f"Strong piece marks  {state}", style.body_font(18), style.INK_SOFT, center=(panel.centerx, panel.y + 84))
         for name, rect in buttons:
             label = {"restart": "Restart Run", "cancel": "Cancel", "readability": "Piece Marks", "close": "Close"}[name]
             draw_button(screen, rect, label, font_size=18)

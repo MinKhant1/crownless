@@ -17,6 +17,10 @@ EFFECT_Y = 0.88
 TEXT_MARGIN = 0.09
 ART_MARGIN_X = 0.09
 READABLE_CARD_HEIGHT = 420
+# below this height the card's rules text would be a few pixels tall, so the card shows only art and
+# a name you can read; the hover tooltip and the click-through card carry the full text
+MINI_CARD_LIMIT = 200
+MINI_NAME_SIZES = (13, 12, 11, 10, 9)
 
 _KEYWORDS = (
     "SPECIAL PIECE",
@@ -113,8 +117,11 @@ class RelicCardRenderer:
         cached = self._faces.get(key)
         if cached is not None:
             return cached
-        surface = pygame.Surface((width, height), pygame.SRCALPHA)
-        self.draw(surface, assets, relic, surface.get_rect())
+        if height < MINI_CARD_LIMIT:
+            surface = _compose_mini(assets, relic, width, height)
+        else:
+            surface = pygame.Surface((width, height), pygame.SRCALPHA)
+            self.draw(surface, assets, relic, surface.get_rect())
         if state == "disabled":
             _mute(surface)
         elif state == "used":
@@ -218,6 +225,49 @@ def _compose_face(assets: AssetManager, relic: RelicDef, width: int, height: int
     _draw_lines(card, flavour_lines, flavour_font, flavour_font, flavour_rect)
     _draw_lines(card, effect_lines, effect_font, _serif(effect_size, True), effect_rect)
     return card
+
+
+def _compose_mini(assets: AssetManager, relic: RelicDef, width: int, height: int) -> pygame.Surface:
+    card = pygame.Surface((width, height), pygame.SRCALPHA)
+    body = card.get_rect()
+    radius = max(4, width // 14)
+    if assets.has("relic_card"):
+        card.blit(assets.scaled("relic_card", (width, height)), (0, 0))
+    else:
+        pygame.draw.rect(card, (236, 226, 206), body, border_radius=radius)
+    lines, font = mini_name(relic.name, width - 8)
+    band_h = font.get_height() * len(lines) + 6
+    band = pygame.Rect(0, height - band_h - 3, width, band_h)
+    art = pygame.Rect(5, 6, width - 10, max(1, band.top - 8))
+    _blit_art(card, assets, relic, art)
+    pygame.draw.rect(card, (54, 33, 20), band)
+    pygame.draw.line(card, (200, 158, 86), (band.x + 3, band.y), (band.right - 4, band.y))
+    y = band.y + 3
+    for line in lines:
+        shade = font.render(line, True, (8, 4, 2))
+        face = font.render(line, True, (241, 228, 200))
+        spot = face.get_rect(midtop=(width // 2, y))
+        card.blit(shade, spot.move(0, 1))
+        card.blit(face, spot)
+        y += font.get_height()
+    pygame.draw.rect(card, (70, 44, 26), body, width=2, border_radius=radius)
+    mask = pygame.Surface((width, height), pygame.SRCALPHA)
+    pygame.draw.rect(mask, (255, 255, 255, 255), body, border_radius=radius)
+    card.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+    return card
+
+
+def mini_name(name: str, width: int) -> tuple[list[str], pygame.font.Font]:
+    """The relic name in Cinzel at the largest size from MINI_NAME_SIZES that fits in two lines."""
+    from rendering.style import title_font
+
+    for size in MINI_NAME_SIZES:
+        font = title_font(size, bold=True)
+        lines = wrap_text(font, name.upper(), width)
+        if len(lines) <= 2 and all(font.size(line)[0] <= width for line in lines):
+            return lines, font
+    font = title_font(MINI_NAME_SIZES[-1], bold=True)
+    return wrap_text(font, name.upper(), width)[:2], font
 
 
 def _band(width: int, height: int, font: pygame.font.Font, lines: list[str], anchor: float) -> pygame.Rect:

@@ -18,6 +18,7 @@ from game.game import Game
 from game.turn_manager import TurnManager
 from rendering.asset_manager import AssetManager
 from rendering.layout import Layout
+from rendering import style
 from rendering.wood_swirl import wood_swirl
 
 _FONTS: dict[tuple[int, bool], pygame.font.Font] = {}
@@ -72,17 +73,9 @@ def draw_button(
     label: str,
     enabled: bool = True,
     font_size: int = 22,
+    selected: bool = False,
 ) -> None:
-    fill = (72, 42, 28) if enabled else (54, 44, 38)
-    border = (214, 170, 90) if enabled else (120, 104, 84)
-    text = LIGHT_TEXT if enabled else (168, 156, 142)
-    pygame.draw.rect(screen, fill, rect, border_radius=10)
-    pygame.draw.rect(screen, border, rect, width=2, border_radius=10)
-    font = get_font(font_size, bold=True)
-    while font_size > 11 and font.size(label)[0] > rect.w - 12:
-        font_size -= 1
-        font = get_font(font_size, bold=True)
-    _blit_text(screen, label, font, text, center=rect.center)
+    style.draw_plaque_button(screen, rect, label, style.button_state(rect, enabled, selected), font_size)
 
 
 def _blit_text(
@@ -105,6 +98,10 @@ def _blit_text(
 def draw_background(screen: pygame.Surface, assets: AssetManager) -> None:
     wood_swirl.ensure(assets.root / "backgrounds" / "wood_swirl.png")
     wood_swirl.draw(screen)
+    width, height = screen.get_size()
+    glow = style.candle_glow((int(width * 1.1), int(height * 0.9)), strength=26)
+    screen.blit(glow, glow.get_rect(center=(width // 2, int(height * 0.3))), special_flags=pygame.BLEND_RGB_ADD)
+    style.canvas_grain(screen)
 
 
 def draw_header_and_status(
@@ -140,17 +137,13 @@ def draw_crown(screen: pygame.Surface, assets: AssetManager, layout: Layout) -> 
 
 
 def draw_labels(screen: pygame.Surface, layout: Layout) -> None:
-    font = get_font(max(15, layout.square // 5), bold=False)
+    font = style.title_font(max(15, layout.square // 5), bold=True)
     for col, letter in enumerate(FILES):
         rect = layout.square_rect(col, 1)
-        _blit_text(screen, letter, font, LABEL_TEXT, center=(rect.centerx, layout.frame.bottom + 14))
+        style.text(screen, letter, font, style.IVORY_SOFT, shadow=(8, 4, 2, 200), center=(rect.centerx, layout.frame.bottom + 14))
     for row in range(1, 7):
         rect = layout.square_rect(0, row)
-        surface = font.render(str(row), True, LABEL_TEXT)
-        destination = surface.get_rect()
-        destination.centery = rect.centery
-        destination.right = layout.frame.left - 10
-        screen.blit(surface, destination)
+        style.text(screen, str(row), font, style.IVORY_SOFT, shadow=(8, 4, 2, 200), midright=(layout.frame.left - 10, rect.centery))
 
 
 def draw_turn(screen: pygame.Surface, game: Game, layout: Layout) -> None:
@@ -161,8 +154,8 @@ def draw_turn(screen: pygame.Surface, game: Game, layout: Layout) -> None:
         color = RESULT_TEXT
     else:
         color = TURN_TEXT
-    font = get_font(max(20, layout.turn.h - 8), bold=True)
-    _blit_text(screen, turn_text(game.turns), font, color, center=layout.turn.center)
+    font = style.title_font(max(20, layout.turn.h - 10), bold=True)
+    style.text(screen, turn_text(game.turns), font, color, shadow=(8, 4, 2, 210), center=layout.turn.center)
 
 
 def _move_label(game: Game) -> str:

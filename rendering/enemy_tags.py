@@ -4,6 +4,7 @@ import pygame
 
 from ai.trait_assignment import current_enemy_trait
 from ai.trait_definitions import trait_description, trait_title
+from rendering import style
 from rendering.hud_renderer import _blit_text, get_font
 
 
@@ -37,7 +38,7 @@ def faced_enemy(run, game=None):
 
 SECTION_HEIGHTS = (90, 160, 105, 105)
 IVORY = (245, 232, 210)
-HEADING = (226, 204, 168)
+HEADING = (214, 176, 104)
 
 
 def hud_scale(panel_w: int) -> float:
@@ -45,12 +46,7 @@ def hud_scale(panel_w: int) -> float:
 
 
 def _fitted_font(text: str, size: int, max_width: int, bold: bool = True) -> pygame.font.Font:
-    size = max(11, int(size))
-    font = get_font(size, bold=bold)
-    while size > 11 and font.size(text)[0] > max_width:
-        size -= 1
-        font = get_font(size, bold=bold)
-    return font
+    return style.fitted_title(text, size, max_width, bold=bold, floor=11)
 
 
 def battle_label(run) -> str:
@@ -65,7 +61,7 @@ def battle_font(panel_w: int, label: str = "BATTLE 12") -> pygame.font.Font:
 
 
 def heading_font(panel_w: int) -> pygame.font.Font:
-    return _fitted_font("ENEMY PERSONALITY", int(round(18 * hud_scale(panel_w))), max(1, panel_w - 40))
+    return _fitted_font("ENEMY PERSONALITY", int(round(17 * hud_scale(panel_w))), max(1, panel_w - 40), bold=False)
 
 
 def heading_block(panel_w: int) -> int:
@@ -136,7 +132,7 @@ def draw_personalities(screen: pygame.Surface, assets, run, layout, game=None) -
         _battle, personality, _resources, _army = left_sections(layout, run)
         block = heading_block(layout.left.w)
         area = pygame.Rect(personality.x, personality.y + block, personality.w, max(1, personality.h - block))
-        _blit_text(screen, "—", heading_font(layout.left.w), (176, 146, 104), center=area.center)
+        style.text(screen, "—", heading_font(layout.left.w), (176, 146, 104), center=area.center)
     for row in placed.rows:
         image = _tag_image(assets, row.trait, row.rect.size)
         if image is not None:
@@ -204,17 +200,16 @@ def _tag_image(assets, trait: str, size: tuple[int, int]):
 
 
 def _draw_tag_tooltip(screen: pygame.Surface, row: TagRow, layout) -> None:
-    title_font = get_font(16, bold=True)
-    body_font = get_font(15, bold=False)
+    title_font = style.title_font(16, bold=True)
+    body_font = style.body_font(15)
     title = trait_title(row.trait)
     body = trait_description(row.trait)
     width = min(240, max(140, layout.left.w - 24))
     lines = _wrap(body_font, body, width - 20)
     height = 16 + title_font.get_height() + 8 + len(lines) * (body_font.get_height() + 2)
     panel = _place_tooltip(row.rect, width, height, screen.get_size(), layout.left, layout.board)
-    pygame.draw.rect(screen, (236, 220, 186), panel, border_radius=8)
-    pygame.draw.rect(screen, (92, 58, 32), panel, width=2, border_radius=8)
-    _blit_text(screen, title, title_font, (62, 36, 22), midleft=(panel.x + 10, panel.y + 8 + title_font.get_height() // 2))
+    style.tooltip_panel(screen, None, panel)
+    style.text(screen, title, title_font, style.INK, midleft=(panel.x + 10, panel.y + 8 + title_font.get_height() // 2))
     y = panel.y + 16 + title_font.get_height()
     for line in lines:
         _blit_text(screen, line, body_font, (92, 58, 32), midleft=(panel.x + 10, y + body_font.get_height() // 2))

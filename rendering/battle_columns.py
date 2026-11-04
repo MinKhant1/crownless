@@ -1,6 +1,5 @@
 import pygame
 
-from config.settings import LIGHT_TEXT
 from rendering.enemy_tags import (
     HEADING,
     IVORY,
@@ -12,7 +11,8 @@ from rendering.enemy_tags import (
     hud_scale,
     left_sections,
 )
-from rendering.hud_renderer import _blit_text, get_font
+from rendering import style
+from rendering.hud_renderer import draw_button
 from rendering.shop_preview import draw_panel_preview
 
 GOLD_VALUE = (236, 206, 130)
@@ -24,11 +24,11 @@ _GOLD_SCALED: dict[int, pygame.Surface] = {}
 def draw_left_sidebar(screen: pygame.Surface, run, layout, assets=None, game=None) -> None:
     rect = layout.left
     battle, personality, resources, army = left_sections(layout, run)
-    _draw_wood(screen, rect)
+    style.draw_wood_panel(screen, rect, seed=1)
     for section in (battle, personality, resources, army):
         _divider(screen, rect, section.bottom)
     label = battle_label(run)
-    _blit_text(screen, label, battle_font(rect.w, label), IVORY, center=battle.center)
+    style.text(screen, label, battle_font(rect.w, label), IVORY, shadow=(8, 4, 2, 220), center=battle.center)
     _draw_heading(screen, "ENEMY PERSONALITY", personality)
     _draw_heading(screen, "RESOURCES", resources)
     _draw_gold(screen, assets, run, resources)
@@ -37,32 +37,19 @@ def draw_left_sidebar(screen: pygame.Surface, run, layout, assets=None, game=Non
     if run.phase == "shop":
         _draw_coming_board(screen, assets, run, layout, army)
     if run.notice:
-        _blit_text(screen, run.notice, get_font(16, bold=False), (214, 120, 96), center=(rect.centerx, layout.menu.y - 18))
+        style.text(screen, run.notice, style.body_font(16, italic=True), (232, 142, 112), shadow=(8, 4, 2, 200), center=(rect.centerx, layout.menu.y - 18))
     _menu_button(screen, layout.menu, "Main Menu")
     _menu_button(screen, layout.options, "Options")
     draw_personalities(screen, assets, run, layout, game)
 
 
-def _draw_wood(screen: pygame.Surface, rect: pygame.Rect) -> None:
-    shadow = pygame.Surface((rect.w, rect.h), pygame.SRCALPHA)
-    pygame.draw.rect(shadow, (12, 6, 3, 88), shadow.get_rect(), border_radius=16)
-    screen.blit(shadow, (rect.x + 3, rect.y + 5))
-    plate = pygame.Surface((max(1, rect.w), max(1, rect.h)), pygame.SRCALPHA)
-    body = plate.get_rect()
-    pygame.draw.rect(plate, (46, 27, 16, 236), body, border_radius=16)
-    pygame.draw.rect(plate, (214, 170, 90), body, width=2, border_radius=16)
-    inner = body.inflate(-8, -8)
-    pygame.draw.rect(plate, (156, 116, 62), inner, width=1, border_radius=12)
-    screen.blit(plate, rect.topleft)
-
-
 def _divider(screen: pygame.Surface, panel: pygame.Rect, y: int) -> None:
-    pygame.draw.line(screen, (132, 96, 54), (panel.x + 18, y), (panel.right - 18, y), 2)
+    style.ornament_rule(screen, (panel.centerx, y), panel.w - 48, style.GOLD_DIM)
 
 
 def _draw_heading(screen: pygame.Surface, text: str, section: pygame.Rect) -> None:
     font = heading_font(section.w)
-    _blit_text(screen, text, font, HEADING, center=(section.centerx, section.y + 14 + font.get_height() // 2))
+    style.text(screen, text, font, HEADING, shadow=(8, 4, 2, 200), center=(section.centerx, section.y + 14 + font.get_height() // 2))
 
 
 def _content_area(section: pygame.Rect) -> pygame.Rect:
@@ -73,7 +60,7 @@ def _content_area(section: pygame.Rect) -> pygame.Rect:
 def _draw_gold(screen: pygame.Surface, assets, run, section: pygame.Rect) -> None:
     area = _content_area(section)
     scale = hud_scale(section.w)
-    font = get_font(max(18, int(round(26 * scale))), bold=True)
+    font = style.title_font(max(18, int(round(28 * scale))), bold=True)
     label = str(run.gold)
     text_w = font.size(label)[0]
     icon_h = max(26, int(round(34 * scale)))
@@ -88,15 +75,15 @@ def _draw_gold(screen: pygame.Surface, assets, run, section: pygame.Rect) -> Non
         coin = (x + icon_h // 2, area.centery)
         pygame.draw.circle(screen, (120, 84, 32), coin, icon_h // 2)
         pygame.draw.circle(screen, (232, 190, 78), coin, max(4, icon_h // 2 - 3))
-    _blit_text(screen, label, font, GOLD_VALUE, midleft=(x + icon_w + gap, area.centery))
+    style.text(screen, label, font, GOLD_VALUE, shadow=(8, 4, 2, 220), midleft=(x + icon_w + gap, area.centery))
 
 
 def _draw_army(screen: pygame.Surface, run, section: pygame.Rect) -> None:
     area = _content_area(section)
     count = run.deployment.non_king_count(run.army)
     label = f"Army {count} / {run.army.capacity}"
-    font = get_font(max(16, int(round(21 * hud_scale(section.w)))), bold=True)
-    _blit_text(screen, label, font, IVORY, center=area.center)
+    font = style.title_font(max(16, int(round(21 * hud_scale(section.w)))), bold=True)
+    style.text(screen, label, font, IVORY, shadow=(8, 4, 2, 220), center=area.center)
 
 
 def _draw_coming_board(screen: pygame.Surface, assets, run, layout, army: pygame.Rect) -> None:
@@ -109,13 +96,7 @@ def _draw_coming_board(screen: pygame.Surface, assets, run, layout, army: pygame
 
 
 def _menu_button(screen: pygame.Surface, rect: pygame.Rect, label: str) -> None:
-    pointer = pygame.mouse.get_pos() if pygame.display.get_surface() is not None else (-1, -1)
-    hovered = rect.collidepoint(pointer)
-    fill = (98, 60, 36) if hovered else (72, 42, 28)
-    border = (232, 196, 120) if hovered else (214, 170, 90)
-    pygame.draw.rect(screen, fill, rect, border_radius=10)
-    pygame.draw.rect(screen, border, rect, width=2, border_radius=10)
-    _blit_text(screen, label, get_font(18, bold=True), LIGHT_TEXT, center=rect.center)
+    draw_button(screen, rect, label, font_size=18)
 
 
 def _gold_icon(assets, height: int) -> pygame.Surface | None:

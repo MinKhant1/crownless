@@ -151,7 +151,7 @@ class BattleLayoutTests(unittest.TestCase):
 
     def test_long_armies_scroll_inside_the_panel(self):
         run = RunState.new(seed=7)
-        for index in range(14):
+        for index in range(24):
             piece = run.army.create("pawn")
             piece.trait = f"mark-{index}"
         layout = build_layout(1280, 720)
