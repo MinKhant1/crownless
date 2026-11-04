@@ -61,7 +61,8 @@ class CollectionOverlay:
             if self._shown(index) and rect.collidepoint(pos):
                 run.shop.collection_pick = index
                 return True
-        run.shop.collection_open = None
+        if run.phase != "starter":  # the starter pick has no way back, so it stays open
+            run.shop.collection_open = None
         return True
 
     def paint(self, screen: pygame.Surface, assets: AssetManager, run: RunState) -> None:
@@ -69,7 +70,9 @@ class CollectionOverlay:
             return
         window = screen.get_size()
         title = "Choose a Relic" if run.shop.collection_open == "relic" else "Choose a Piece"
-        _blit_text(screen, title, get_font(32, bold=True), (245, 232, 210), center=(window[0] // 2, int(window[1] * 0.18)))
+        if run.phase == "starter":
+            title = "Choose a Starter Relic"
+        _blit_text(screen, title, get_font(32, bold=True), (245, 232, 210), center=(window[0] // 2, int(window[1] * 0.12)))
         choices = self._choices(run)
         rects = self._card_rects(run, window)
         for index, rect in enumerate(rects):

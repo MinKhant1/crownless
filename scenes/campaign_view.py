@@ -58,6 +58,10 @@ def _paint(
     settled: bool,
 ) -> None:
     backdrop = not scene.motion.active
+    if phase == "starter":
+        draw_background(screen, assets)
+        collection_overlay.paint(screen, assets, run)
+        return
     if phase == "shop":
         if collection_overlay.blocks(run):
             draw_background(screen, assets)

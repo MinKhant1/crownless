@@ -61,6 +61,15 @@ class RunState:
         self.battle_roster = ()
         self.phase = "preview"
 
+    def offer_starter_relics(self) -> None:
+        # rulebook: before Battle 1 the player picks 1 of 3 random relics
+        pool = list(self.shop.catalog)
+        self.shop.relic_choices = random.Random(f"{self.seed}:starter").sample(pool, min(3, len(pool)))
+        self.shop.relic_collection_claimed = False
+        self.shop.collection_open = "relic"
+        self.shop.collection_pick = None
+        self.phase = "starter"
+
     def blocked_squares(self) -> set[tuple[int, int]]:
         squares: set[tuple[int, int]] = set()
         for piece in self.enemies:
@@ -372,6 +381,8 @@ class RunState:
                 return self.notice
             self.relics.acquire(relic_id)
             self.notice = ""
+            if self.phase == "starter":
+                self.phase = "preview"
             return None
         if self.shop.collection_open == "piece":
             picked = self.shop.take_piece_choice()

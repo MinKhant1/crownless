@@ -69,6 +69,8 @@ class FullRunTests(unittest.TestCase):
             shop_hand.update(DT, run, shop, window)
             shop_offers.update(DT, run, shop)
             collection_overlay.update(DT, run)
+        if run.phase == "starter":
+            collection_overlay.update(DT, run)
         present(self.screen, self.assets, run, self.deployment, self.relic_bar, self.scene, board, shop)
         if not self.scene.motion.active:
             self.relics.draw(self.screen, self.assets, run, shop)
@@ -123,6 +125,22 @@ class FullRunTests(unittest.TestCase):
                         self.frames(run, 10)
                     main._leave_shop(self.scene, run, self.relic_bar)
                 self.assertEqual(run.phase, "complete")
+
+    def test_a_new_run_opens_on_the_starter_relic_pick(self):
+        window = self.screen.get_size()
+        run = main._new_run()
+        self.scene.reset()
+        self.frames(run, 60)
+        self.assertEqual(run.phase, "starter")
+        card = collection_overlay._card_rects(run, window)[2]
+        for pos in (card.center, collection_overlay._confirm_rect(window).center):
+            collection_overlay.on_left_down(pos, run, window)
+            collection_overlay.on_left_up(pos, run, window)
+        self.settle(run)
+        self.assertEqual(run.phase, "deployment")
+        self.assertEqual(len(run.relics.owned), 1)
+        self.end_battle(run, won=True)
+        self.assertEqual(run.phase, "victory")
 
     def test_losing_the_king_ends_the_run(self):
         run = RunState.new(4)

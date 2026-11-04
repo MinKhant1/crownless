@@ -323,3 +323,40 @@ class StartingGoldTests(unittest.TestCase):
         import main
 
         self.assertEqual(main._new_run().gold, 5)
+
+
+class StarterRelicTests(unittest.TestCase):
+    def test_a_new_run_offers_three_different_relics_before_battle_1(self):
+        import main
+        from game.relics.relic_data import shop_relic_ids
+
+        run = main._new_run()
+        choices = run.shop.relic_choices
+        self.assertEqual(run.phase, "starter")
+        self.assertEqual(run.shop.collection_open, "relic")
+        self.assertEqual(len(set(choices)), 3)
+        self.assertTrue(set(choices) <= set(shop_relic_ids()))
+        again = RunState.new(run.seed)
+        again.offer_starter_relics()
+        self.assertEqual(again.shop.relic_choices, choices)
+
+    def test_the_picked_relic_is_free_and_the_run_moves_on(self):
+        run = RunState.new(seed=40)
+        run.offer_starter_relics()
+        picked = run.shop.relic_choices[1]
+        run.shop.collection_pick = 1
+        self.assertIsNone(run.confirm_collection())
+        self.assertEqual([item.relic_id for item in run.relics.owned], [picked])
+        self.assertEqual(run.gold, 5)
+        self.assertEqual(run.phase, "preview")
+
+    def test_clicking_outside_the_cards_does_not_skip_the_pick(self):
+        from rendering.collection_overlay import CollectionOverlay
+
+        run = RunState.new(seed=41)
+        run.offer_starter_relics()
+        overlay = CollectionOverlay()
+        overlay.on_left_down((5, 5), run, (1280, 720))
+        overlay.on_left_up((5, 5), run, (1280, 720))
+        self.assertEqual(run.shop.collection_open, "relic")
+        self.assertEqual(run.phase, "starter")

@@ -239,7 +239,7 @@ def main() -> None:
                 relic_bar.on_right_click()
             elif event.type == pygame.MOUSEMOTION:
                 held = bool(event.buttons[0])
-                if run.phase == "shop":
+                if run.phase in ("shop", "starter"):
                     if collection_overlay.blocks(run):
                         collection_overlay.on_motion(event.pos, run, window)
                     else:
@@ -277,7 +277,7 @@ def main() -> None:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if gallery.open:
                     continue
-                if run.phase == "shop" and collection_overlay.blocks(run):
+                if run.phase in ("shop", "starter") and collection_overlay.blocks(run):
                     collection_overlay.on_left_down(event.pos, run, window)
                     continue
                 if (_board_phase(run) or run.phase == "shop") and screen_menu.on_press(board_layout, event.pos):
@@ -307,7 +307,7 @@ def main() -> None:
                     if action == "restart":
                         if visual_test.active:
                             visual_test.close(run)
-                        run = run.restart()
+                        run = _new_run()
                         scene.reset()
                         trait_debug.target_id = None
                         piece_motion.clear()
@@ -336,6 +336,11 @@ def main() -> None:
                     square = square_at(board_layout, event.pos)
                     if square is not None:
                         visual_test.game.on_board_click(*square)
+                elif run.phase == "starter":
+                    collection_overlay.on_left_up(event.pos, run, window)
+                    if run.phase != "starter":
+                        kind, duration = slide_duration("starter", run.phase)
+                        scene.transition_to(run.phase, kind, duration, source="starter")
                 elif run.phase == "shop":
                     if collection_overlay.blocks(run):
                         collection_overlay.on_left_up(event.pos, run, window)
@@ -371,7 +376,7 @@ def main() -> None:
                 elif run.phase in ("victory", "defeat", "complete"):
                     action = handle_result_click(run, event.pos, window)
                     if action == "restart":
-                        run = run.restart()
+                        run = _new_run()
                         scene.reset()
                         trait_debug.target_id = None
                         piece_motion.clear()
@@ -391,6 +396,8 @@ def main() -> None:
             collection_overlay.update(dt, run)
         elif shop_piece.dragging or shop_piece.armed:
             shop_piece.clear()
+        if run.phase == "starter":
+            collection_overlay.update(dt, run)
         if visual_test.active and visual_test.game is not None:
             render_battle(screen, assets, visual_test.game, board_layout, relic_bar, run, army=deployment.army)
             _blit_text(
@@ -418,6 +425,7 @@ def main() -> None:
             and relic_bar.detail_id is None
             and (
                 (run.phase in ("preview", "deployment", "battle") and relic_bar.hover_id is not None)
+                or (run.phase == "starter" and collection_overlay.hover >= 0)
                 or (
                     run.phase == "shop"
                     and (
@@ -483,6 +491,7 @@ def _new_run() -> RunState:
     run = RunState.new()
     if DEBUG_SHOP_GOLD is not None:
         run.gold = DEBUG_SHOP_GOLD
+    run.offer_starter_relics()
     return run
 
 
