@@ -7,6 +7,7 @@ from game.run_state import RunState
 from game.scene_manager import SceneManager
 from game.transitions.easing import ease_out_cubic
 from rendering.asset_manager import AssetManager
+from rendering import style
 from rendering.hud_renderer import _blit_text, draw_background, get_font
 from rendering.layout import Layout
 from rendering.shop_layout import ShopLayout
@@ -99,25 +100,22 @@ def _draw_battle_start(screen: pygame.Surface, layout: Layout, elapsed: float) -
     wash = pygame.Surface(layout.board.size, pygame.SRCALPHA)
     wash.fill((214, 170, 90, int(40 * fade)))
     screen.blit(wash, layout.board.topleft)
-    font = get_font(40, bold=True)
-    text = font.render("BATTLE START", True, (245, 230, 204))
-    plate = pygame.Surface((text.get_width() + 56, text.get_height() + 28), pygame.SRCALPHA)
-    pygame.draw.rect(plate, (48, 30, 20, int(210 * fade)), plate.get_rect(), border_radius=12)
-    pygame.draw.rect(plate, (214, 170, 90, int(255 * fade)), plate.get_rect(), width=2, border_radius=12)
-    dest = text.get_rect(center=plate.get_rect().center)
-    plate.blit(text, dest)
+    font = style.title_font(40, bold=True)
+    width, height = font.size("Battle Start")
+    plate = pygame.Surface((width + 80, height + 34), pygame.SRCALPHA)
+    plate.blit(style.plaque(plate.get_size(), "selected"), (0, 0))
+    style.text(plate, "Battle Start", font, style.GOLD_BRIGHT, shadow=(10, 4, 2, 220), center=plate.get_rect().center)
     plate.set_alpha(int(255 * fade))
     screen.blit(plate, plate.get_rect(center=layout.board.center))
 
 
 def _draw_gold_chip(screen: pygame.Surface, gold: int) -> None:
-    font = get_font(20, bold=True)
+    font = style.title_font(20, bold=True)
     label = f"Gold  {gold}"
     width, height = font.size(label)
-    rect = pygame.Rect(screen.get_width() - width - 36, 16, width + 24, height + 14)
-    pygame.draw.rect(screen, (236, 220, 196), rect, border_radius=8)
-    pygame.draw.rect(screen, (92, 64, 42), rect, width=2, border_radius=8)
-    _blit_text(screen, label, font, (68, 40, 26), center=rect.center)
+    rect = pygame.Rect(screen.get_width() - width - 40, 16, width + 28, height + 14)
+    screen.blit(style.plaque(rect.size, "idle"), rect.topleft)
+    style.text(screen, label, font, style.GOLD_BRIGHT, shadow=(8, 4, 2, 220), center=rect.center)
 
 
 def settle_finished_board(run: RunState) -> None:

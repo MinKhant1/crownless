@@ -4,7 +4,7 @@ import pygame
 
 from config.settings import PIECE_PRICE, RELIC_PRICE
 from game.run_state import RunState
-from rendering.card_motion import preview_order
+from rendering.card_motion import Motion, preview_order
 from rendering.layout import build_layout
 from rendering.relic_bar_renderer import RelicBar
 from rendering.relic_flip import shop_reveal
@@ -102,15 +102,15 @@ class CardOrderTests(unittest.TestCase):
         layout = build_layout(1280, 900)
         bar.update(0, run, layout)
         slots = bar.placements(run, layout, 0)
-        point = (slots[1].rest.left + 1, slots[1].rest.centery)
-        self.assertTrue(slots[0].rest.collidepoint(point))
-        self.assertEqual(bar._slot_at(point, run, layout, 0).owned.instance_id, slots[1].owned.instance_id)
-        bar.selected_card_id = slots[0].owned.instance_id
-        bar.update(1, run, layout)
+        # cards rest side by side so their names stay readable; slide the first one over the second
+        first, second = slots[0], slots[1]
+        bar._motion[first.owned.instance_id] = Motion(second.rest.left, first.rest.bottom, 1.0, 0.0)
         slots = bar.placements(run, layout, 0)
         overlap = slots[0].drawn.clip(slots[1].drawn)
-        if overlap.w > 2 and overlap.h > 2:
-            self.assertEqual(bar._slot_at(overlap.center, run, layout, 0).owned.instance_id, slots[0].owned.instance_id)
+        self.assertGreater(overlap.w, 2)
+        self.assertEqual(bar._slot_at(overlap.center, run, layout, 0).owned.instance_id, second.owned.instance_id)
+        bar.selected_card_id = first.owned.instance_id
+        self.assertEqual(bar._slot_at(overlap.center, run, layout, 0).owned.instance_id, first.owned.instance_id)
 
 
 class ShopHandTests(unittest.TestCase):

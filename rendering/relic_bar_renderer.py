@@ -21,12 +21,14 @@ from rendering.card_motion import (
     step_motion,
 )
 from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font
+from rendering import style
 from rendering.layout import Layout
 from rendering.relic_card import RelicCardRenderer
 from rendering.relic_tooltip_renderer import draw_relic_tooltip
 
 
 FLASH_MS = 520
+SHELF_LIP = 11
 
 
 @dataclass
@@ -270,6 +272,8 @@ class RelicBar:
         moment = pygame.time.get_ticks() if now is None else now
         _draw_relic_well(screen, layout.relics)
         if not run.relics.owned:
+            hint = style.title_font(17, bold=False)
+            style.text(screen, "No relics yet", hint, (198, 164, 112), shadow=(8, 4, 2, 200), center=(layout.relics.centerx, layout.relics.centery - 3))
             return
         slots = self.placements(run, layout, moment)
         ordered = sorted(enumerate(slots), key=lambda pair: (self._rank(pair[1].owned.instance_id), pair[0]))
@@ -281,13 +285,13 @@ class RelicBar:
             draw_button(screen, left, "<", enabled=self.scroll > 0, font_size=16)
             draw_button(screen, right, ">", enabled=self.scroll < len(self.ordered(run)) - RELIC_BAR_SLOTS, font_size=16)
         if self.flash_note and moment < self.flash_note_until:
-            _blit_text(
-                screen,
-                self.flash_note,
-                get_font(16, bold=True),
-                (236, 210, 140),
-                center=(layout.relics.centerx, max(18, layout.relics.top - 14)),
-            )
+            # beside the crown, not on it
+            font = style.title_font(15, bold=True)
+            note = pygame.Rect(0, 0, font.size(self.flash_note)[0] + 22, font.get_height() + 10)
+            note.bottomleft = (layout.relics.x + 6, layout.relics.top - 4)
+            note.top = max(4, note.top)
+            style.tooltip_panel(screen, None, note)
+            style.text(screen, self.flash_note, font, style.INK, center=note.center)
 
     def draw_overlay(self, screen: pygame.Surface, assets: AssetManager, run: RunState, layout: Layout, now: int | None = None) -> None:
         if self.detail_id is not None:
@@ -517,10 +521,10 @@ def rest_rects(band: pygame.Rect, count: int, scrolling: bool) -> list[pygame.Re
     count = max(0, min(RELIC_BAR_SLOTS, count))
     if count == 0:
         return []
-    inset = 36 if scrolling else 8
+    inset = 36 if scrolling else 14
     available = max(1, band.w - inset * 2)
-    gap = -12 if count >= 5 else (8 if available > 420 else 4)
-    card_h = max(48, min(RELIC_CARD_HEIGHT, band.h - 8))
+    gap = 10 if available > 420 else 4
+    card_h = max(48, min(RELIC_CARD_HEIGHT, band.h - SHELF_LIP - 6))
     card_w = max(36, int(round(card_h * RELIC_CARD_WIDTH / RELIC_CARD_HEIGHT)))
     total = count * card_w + (count - 1) * gap
     if total > available:
@@ -532,7 +536,7 @@ def rest_rects(band: pygame.Rect, count: int, scrolling: bool) -> list[pygame.Re
             card_w = max(36, int(round(card_h * RELIC_CARD_WIDTH / RELIC_CARD_HEIGHT)))
         total = count * card_w + (count - 1) * gap
     left = band.x + inset + max(0, (available - total) // 2)
-    top = band.bottom - card_h - 4
+    top = band.bottom - card_h - SHELF_LIP
     return [pygame.Rect(left + index * (card_w + gap), top, card_w, card_h) for index in range(count)]
 
 
@@ -587,10 +591,12 @@ def _activate_rect(panel: pygame.Rect) -> pygame.Rect:
 
 
 def _draw_relic_well(screen: pygame.Surface, rect: pygame.Rect) -> None:
-    plate = pygame.Surface((max(1, rect.w), max(1, rect.h)), pygame.SRCALPHA)
-    pygame.draw.rect(plate, (236, 220, 196, 72), plate.get_rect(), border_radius=14)
-    pygame.draw.rect(plate, (214, 170, 90, 190), plate.get_rect(), width=2, border_radius=14)
-    screen.blit(plate, rect.topleft)
+    """A carved shelf: the relics stand on its front lip."""
+    style.draw_wood_panel(screen, rect, seed=3)
+    lip = pygame.Rect(rect.x + 8, rect.bottom - SHELF_LIP - 1, rect.w - 16, SHELF_LIP - 3)
+    pygame.draw.rect(screen, (96, 62, 36), lip, border_radius=2)
+    pygame.draw.line(screen, (150, 106, 64), (lip.x + 2, lip.y), (lip.right - 3, lip.y))
+    pygame.draw.line(screen, (20, 11, 6), (lip.x + 2, lip.bottom), (lip.right - 3, lip.bottom), 2)
 
 
 def _blit_shadow(screen: pygame.Surface, rect: pygame.Rect, strong: bool = False, angle: float = 0.0) -> None:

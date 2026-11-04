@@ -6,8 +6,10 @@ from game.relics.relic_data import relic_by_id
 from game.run_state import RunState
 from game.transitions.easing import ease_out_cubic
 from rendering.asset_manager import AssetManager
+from rendering import style
 from rendering.hud_renderer import _blit_text, draw_background, draw_button, get_font
 from rendering.victory_summary import continue_rect
+from rendering.win_screen import win_screen
 
 
 def result_button(window: tuple[int, int], run: RunState) -> tuple[pygame.Rect, pygame.Rect]:
@@ -20,7 +22,7 @@ def result_button(window: tuple[int, int], run: RunState) -> tuple[pygame.Rect, 
 
 def outcome_button(window: tuple[int, int], run: RunState) -> pygame.Rect | None:
     if run.phase == "complete":
-        return result_button(window, run)[1]
+        return win_screen.buttons(window)[0]
     if run.phase == "victory":
         return continue_rect(window, run)
     if run.phase == "defeat":
@@ -29,6 +31,15 @@ def outcome_button(window: tuple[int, int], run: RunState) -> pygame.Rect | None
 
 
 def handle_result_click(run: RunState, pos: tuple[int, int], window: tuple[int, int]) -> str | None:
+    if run.phase == "complete":
+        if not win_screen.buttons_shown():
+            return None
+        new_run, menu = win_screen.buttons(window)
+        if new_run.collidepoint(pos):
+            return "restart"
+        if menu.collidepoint(pos):
+            return "menu"
+        return None
     button = outcome_button(window, run)
     if button is None or not button.collidepoint(pos):
         return None
@@ -40,6 +51,9 @@ def handle_result_click(run: RunState, pos: tuple[int, int], window: tuple[int, 
 
 
 def draw_result(screen: pygame.Surface, assets: AssetManager, run: RunState, backdrop: bool = True) -> None:
+    if run.phase == "complete":
+        win_screen.draw(screen, assets, run, backdrop=backdrop)
+        return
     if backdrop:
         draw_background(screen, assets)
     panel, button = result_button(screen.get_size(), run)
@@ -74,21 +88,26 @@ def draw_outcome_banner(
     reward: float,
     show_button: bool,
 ) -> None:
+    # the defeat banner stays quiet: dark wood, no glow, so the win screen feels bigger by contrast
     window = screen.get_size()
     panel = _banner_panel(window, run, kind, enter)
-    slide = pygame.Surface(panel.size, pygame.SRCALPHA)
-    pygame.draw.rect(slide, (48, 30, 20, 230), slide.get_rect(), border_radius=16)
-    pygame.draw.rect(slide, (214, 170, 90, 255), slide.get_rect(), width=3, border_radius=16)
-    title = "GAME OVER" if kind == "defeat" else f"LEVEL {run.level} COMPLETE"
-    _blit_text(slide, title, get_font(32, bold=True), LIGHT_TEXT, center=(panel.w // 2, 48))
+    amount = ease_out_cubic(enter)
+    shade = pygame.Surface(window, pygame.SRCALPHA)
+    shade.fill((10, 6, 4, int(120 * amount)))
+    screen.blit(shade, (0, 0))
+    slide = style.wood_panel(panel.size, seed=5).copy()
+    title = "Game Over" if kind == "defeat" else f"Level {run.level} Complete"
+    style.text(slide, title, style.title_font(34, bold=True), style.IVORY, shadow=(6, 3, 2, 220), center=(panel.w // 2, 48))
+    style.ornament_rule(slide, (panel.w // 2, 78), panel.w - 120, style.GOLD_DIM)
     if kind == "defeat":
-        _blit_text(slide, "Your King was lost.", get_font(22, bold=False), (236, 220, 196), center=(panel.w // 2, 96))
+        style.text(slide, "Your King was lost.", style.body_font(21, italic=True), style.IVORY_SOFT, center=(panel.w // 2, 106))
     elif reward > 0.02:
-        y = 92
+        y = 104
         for line in _reward_lines(run):
-            _blit_text(slide, line, get_font(22, bold=False), (236, 220, 196), center=(panel.w // 2, y))
+            style.text(slide, line, style.body_font(21), style.IVORY_SOFT, center=(panel.w // 2, y))
             y += 28
-    slide.set_alpha(int(255 * ease_out_cubic(enter)))
+    slide.set_alpha(int(255 * amount))
+    style.drop_shadow(screen, panel, offset=10, spread=18, alpha=int(150 * amount))
     screen.blit(slide, panel.topleft)
     if show_button and enter >= 0.99:
         label = "Restart Run" if kind == "defeat" else "Continue"
@@ -124,7 +143,7 @@ def _army_counts(run: RunState) -> dict[str, int]:
 
 def _banner_panel(window: tuple[int, int], run: RunState, kind: str, enter: float) -> pygame.Rect:
     lines = 2 if kind == "defeat" else len(_reward_lines(run))
-    height = 132 + lines * 28
+    height = 150 + lines * 28
     width = min(520, window[0] - 80)
     settled_y = (window[1] - height) // 2 - 10
     y = settled_y + int((1.0 - max(0.0, min(1.0, enter))) * -80)

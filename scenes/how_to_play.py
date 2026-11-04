@@ -14,6 +14,7 @@ from game.piece import Piece
 from game.relics.relic_data import RELICS, shop_relic_ids
 from game.traits import TRAITS, trait_by_id
 from game.transitions.easing import ease_out_cubic
+from rendering import style
 from rendering.hud_renderer import _blit_text, draw_background, draw_button, get_font
 from rendering.piece_visual_effects import figurines
 from rendering.relic_card import CARD_RATIO, RelicCardRenderer
@@ -21,14 +22,14 @@ from scenes.menu_piece import MenuPiece, wrap_text
 
 
 TABS = (
-    ("play", "BASIC GAMEPLAY"),
-    ("relics", "RELICS & COLLECTIONS"),
-    ("pieces", "SPECIAL PIECES"),
-    ("enemies", "ENEMY TRAITS"),
+    ("play", "Basic Gameplay"),
+    ("relics", "Relics & Collections"),
+    ("pieces", "Special Pieces"),
+    ("enemies", "Enemy Traits"),
 )
 
-INK = (68, 40, 26)
-MUTED = (92, 64, 42)
+INK = style.INK
+MUTED = style.INK_SOFT
 IVORY = (245, 232, 210)
 
 
@@ -146,10 +147,9 @@ class HowToPlayScreen:
         window = screen.get_size()
         frame = _frame(window)
         panel = frame["panel"]
-        pygame.draw.rect(screen, (48, 30, 20), panel, border_radius=18)
-        pygame.draw.rect(screen, (236, 220, 196), panel.inflate(-10, -10), border_radius=14)
-        pygame.draw.rect(screen, (214, 170, 90), panel, width=3, border_radius=18)
-        _blit_text(screen, "How to Play", get_font(30, bold=True), INK, center=(panel.centerx, panel.y + 28))
+        style.drop_shadow(screen, panel, offset=12, spread=22, alpha=150)
+        screen.blit(style.framed_parchment(assets, panel.size, seed=17), panel.topleft)
+        style.text(screen, "How to Play", style.title_font(30, bold=True), INK, shadow=(255, 246, 222, 150), center=(panel.centerx, panel.y + 36))
         self._hits = [("back", frame["back"])]
         self._draw_tabs(screen, frame["tabs"])
         blocks = self._compose(frame["content"].w)
@@ -161,8 +161,8 @@ class HowToPlayScreen:
         self._draw_blocks(screen, assets, frame["content"], blocks, shift, window)
         screen.set_clip(previous)
         if self.notice:
-            _blit_text(screen, self.notice, get_font(16, bold=True), (120, 48, 36), center=(panel.centerx, frame["back"].y - 16))
-        draw_button(screen, frame["back"], "BACK", font_size=18)
+            style.text(screen, self.notice, style.body_font(16, bold=True), (120, 48, 36), center=(panel.centerx, frame["back"].y - 16))
+        draw_button(screen, frame["back"], "Back", font_size=20)
 
     def _step_pawn(self, direction: int) -> None:
         ids = [trait.id for trait in TRAITS]
@@ -170,17 +170,11 @@ class HowToPlayScreen:
         self.pawn.trait = ids[(index + direction) % len(ids)]
 
     def _draw_tabs(self, screen: pygame.Surface, area: pygame.Rect) -> None:
-        gap = 8
+        gap = 10
         width = max(1, (area.w - gap * (len(TABS) - 1)) // len(TABS))
-        font = get_font(13, bold=True)
         for index, (key, label) in enumerate(TABS):
             rect = pygame.Rect(area.x + index * (width + gap), area.y, width, area.h)
-            selected = key == self.tab
-            fill = (120, 78, 36) if selected else (62, 38, 24)
-            border = (232, 196, 96) if selected else (120, 84, 48)
-            pygame.draw.rect(screen, fill, rect, border_radius=8)
-            pygame.draw.rect(screen, border, rect, width=2, border_radius=8)
-            _blit_text(screen, label, font, IVORY, center=rect.center)
+            draw_button(screen, rect, label, font_size=16, selected=key == self.tab)
             self._hits.append((f"tab:{key}", rect))
 
     def _compose(self, width: int) -> list[tuple[str, int, object]]:
@@ -205,7 +199,7 @@ class HowToPlayScreen:
         for kind, height, payload in blocks:
             rect = pygame.Rect(content.x, y, content.w, height)
             if kind == "heading":
-                _blit_text(screen, str(payload), get_font(22, bold=True), INK, midleft=(rect.x + 8, rect.y + 16))
+                style.text(screen, str(payload), style.title_font(22, bold=True), INK, midleft=(rect.x + 8, rect.y + 18))
             elif kind == "text":
                 font = get_font(16, bold=False)
                 line_y = rect.y
@@ -282,7 +276,7 @@ class HowToPlayScreen:
         self.pawn.paint(screen, assets, rest, window)
         trait = trait_by_id(self.pawn.trait)
         if trait is not None:
-            _blit_text(screen, trait.name, get_font(20, bold=True), INK, center=(area.centerx, area.y + 16))
+            style.text(screen, trait.name, style.title_font(21, bold=True), INK, center=(area.centerx, area.y + 16))
             font = get_font(15, bold=False)
             line_y = area.bottom - 36
             for line in wrap_text(trait.description, font, area.w - 120):
@@ -295,19 +289,19 @@ class HowToPlayScreen:
         for trait in AI_TRAITS:
             rect = pygame.Rect(x, area.y + 8, 150, 54)
             selected = trait == self._enemy
-            pygame.draw.rect(screen, (120, 78, 36) if selected else (62, 38, 24), rect, border_radius=8)
-            pygame.draw.rect(screen, (232, 196, 96) if selected else (120, 84, 48), rect, width=2, border_radius=8)
-            icon = _tag_icon(assets, trait, 36)
+            hovered = rect.collidepoint(self._pointer)
+            screen.blit(style.plaque(rect.size, "selected" if selected else "hover" if hovered else "idle"), rect.topleft)
+            icon = _tag_emblem(assets, trait, 34)
             if icon is not None:
-                screen.blit(icon, icon.get_rect(midleft=(rect.x + 8, rect.centery)))
-            _blit_text(screen, trait_title(trait).title(), font, IVORY, midleft=(rect.x + 48, rect.centery))
+                screen.blit(icon, icon.get_rect(midleft=(rect.x + 10, rect.centery)))
+            style.text(screen, trait_title(trait).title(), style.fitted_title(trait_title(trait).title(), 15, 92), IVORY, shadow=(8, 4, 2, 220), midleft=(rect.x + 50, rect.centery))
             self._hits.append((f"enemy:{trait}", rect))
             x += 158
             if x + 150 > area.right:
                 x = area.x + 8
         detail = pygame.Rect(area.x + 8, area.y + 76, area.w - 16, area.h - 84)
         title = trait_title(self._enemy).title()
-        _blit_text(screen, title, get_font(22, bold=True), INK, midleft=(detail.x, detail.y + 8))
+        style.text(screen, title, style.title_font(22, bold=True), INK, midleft=(detail.x, detail.y + 8))
         body = get_font(16, bold=False)
         line_y = detail.y + 36
         copy = trait_description(self._enemy) + " This personality is chosen once at the start of the battle and does not change on later turns."
@@ -316,15 +310,15 @@ class HowToPlayScreen:
             line_y += 22
         board = pygame.Rect(detail.right - 220, detail.y + 8, 200, 200)
         _draw_enemy_example(screen, assets, board, self._enemy)
-        icon = _tag_icon(assets, self._enemy, 72)
-        if icon is not None:
-            screen.blit(icon, icon.get_rect(midtop=(detail.x + 80, line_y + 8)))
+        if assets is not None and assets.has(f"tag_{self._enemy}"):
+            icon = assets.fitted(f"tag_{self._enemy}", 280, 80)
+            screen.blit(icon, icon.get_rect(topleft=(detail.x, line_y + 12)))
 
 
 def _frame(window: tuple[int, int]) -> dict[str, pygame.Rect]:
     panel = pygame.Rect(0, 0, min(1080, window[0] - 36), min(860, window[1] - 24))
     panel.center = (window[0] // 2, window[1] // 2)
-    tabs = pygame.Rect(panel.x + 24, panel.y + 52, panel.w - 48, 42)
+    tabs = pygame.Rect(panel.x + 24, panel.y + 64, panel.w - 48, 42)
     back = pygame.Rect(0, 0, 160, 42)
     back.midbottom = (panel.centerx, panel.bottom - 16)
     content = pygame.Rect(panel.x + 24, tabs.bottom + 12, panel.w - 48, back.y - tabs.bottom - 28)
@@ -358,7 +352,7 @@ def _play_blocks(width: int) -> list[tuple[str, int, object]]:
 
 def _relic_blocks(width: int) -> list[tuple[str, int, object]]:
     intro = "Relics grant passive or triggered effects. Some change how pieces move or capture. Others pay gold, add army size, or rewrite a piece at the start or end of a battle. Several relics can be owned at once, and their effects combine."
-    examples = " ".join(f"{relic.name}: {relic.description}" for relic in RELICS if relic.in_shop)
+    examples = "Every relic, with its full card, is in Collection on the main menu."
     collection = "A Relic Collection costs gold in the shop and reveals three relics you do not already own. You keep one. The other two are discarded. A Piece Collection reveals three pieces. You recruit one, and it joins the reserve army. The cards below are a demonstration and do not spend gold or change a run."
     return [
         ("heading", 36, "Relics"),
@@ -438,6 +432,23 @@ def _draw_enemy_example(screen: pygame.Surface, assets, area: pygame.Rect, trait
                 screen.blit(assets.scaled(key, rect.size), rect.topleft)
     piece = figurines.image(assets, Piece(3, "knight", "black", ai_trait=trait), tile - 6)
     screen.blit(piece, piece.get_rect(center=(area.x + tile + tile // 2, area.y + tile + tile // 2)))
+
+
+_EMBLEMS: dict[tuple[str, int], pygame.Surface] = {}
+
+
+def _tag_emblem(assets, trait: str, size: int):
+    """The painted emblem at the left end of an enemy tag, without the lettering that is unreadable this small."""
+    key = f"tag_{trait}"
+    if assets is None or not assets.has(key):
+        return None
+    cached = _EMBLEMS.get((trait, size))
+    if cached is None:
+        raw = assets.get(key)
+        side = min(raw.get_width(), raw.get_height())
+        cached = pygame.transform.smoothscale(raw.subsurface((0, 0, side, raw.get_height())), (size, size))
+        _EMBLEMS[(trait, size)] = cached
+    return cached
 
 
 def _tag_icon(assets, trait: str, size: int):

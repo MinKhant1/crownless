@@ -3,6 +3,7 @@ import pygame
 from config.settings import BOARD_SIZE, PIECE_SCALE
 from ai.trait_assignment import coming_battle
 from rendering.enemy_tags import HEADING
+from rendering import style
 from rendering.hud_renderer import _blit_text, get_font
 from rendering.piece_visual_effects import figurines
 
@@ -12,14 +13,14 @@ def draw_panel_preview(screen: pygame.Surface, assets, run, bounds: pygame.Rect)
     if preview is None or bounds.w < BOARD_SIZE or bounds.h < BOARD_SIZE:
         return
     _trait, enemies = preview
-    font = get_font(max(15, min(20, bounds.w // 12)), bold=True)
+    font = style.title_font(max(15, min(19, bounds.w // 13)), bold=False)
     label_h = font.get_height()
     gap = 8
     square = max(1, min(bounds.w, max(BOARD_SIZE, bounds.h - label_h - gap)) // BOARD_SIZE)
     side = square * BOARD_SIZE
     group_h = label_h + gap + side
     group_top = bounds.y + max(0, (bounds.h - group_h) // 2)
-    _blit_text(screen, "Next battle", font, HEADING, center=(bounds.centerx, group_top + label_h // 2))
+    style.text(screen, "Next Battle", font, HEADING, shadow=(8, 4, 2, 200), center=(bounds.centerx, group_top + label_h // 2))
     board = pygame.Rect(0, 0, side, side)
     board.midtop = (bounds.centerx, group_top + label_h + gap)
     frame = board.inflate(8, 8)

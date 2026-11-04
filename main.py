@@ -42,7 +42,9 @@ from scenes.campaign_view import present, settle_finished_board
 from scenes.deployment_scene import DeploymentScene
 from scenes.relic_overlay import RelicOverlay
 from rendering.victory_summary import continue_rect
+from rendering.win_screen import win_screen
 from scenes.result_scene import handle_result_click
+from scenes.collection import CollectionScreen
 from scenes.how_to_play import HowToPlayScreen
 from scenes.main_menu import MainMenuScreen
 from scenes.screen_menu import ScreenMenu
@@ -86,6 +88,7 @@ def main() -> None:
         visual_test.open(run)
     front = MainMenuScreen()
     guide = HowToPlayScreen()
+    collection = CollectionScreen()
     mode = "play" if SPECIAL_PIECE_VISUAL_TEST else "menu"
     if mode == "menu":
         front.enter()
@@ -126,9 +129,16 @@ def main() -> None:
                 if action == "guide":
                     guide.open()
                     current_mode = "guide"
+                elif action == "collection":
+                    collection.open()
+                    current_mode = "collection"
                 elif action == "exit":
                     running = False
                     return current_mode, current_run, current_cursor, current_dt
+            elif current_mode == "collection":
+                if collection.on_event(event, window) == "back":
+                    front.enter()
+                    current_mode = "menu"
             elif guide.on_event(event, window) == "back":
                 front.enter()
                 current_mode = "menu"
@@ -137,6 +147,10 @@ def main() -> None:
             front.update(current_dt, window)
             front.draw(screen, assets)
             hand = front.wants_hand(window)
+        elif current_mode == "collection":
+            collection.update(current_dt, window)
+            collection.draw(screen, assets)
+            hand = collection.wants_hand()
         else:
             guide.update(current_dt, window)
             guide.draw(screen, assets)
@@ -381,8 +395,18 @@ def main() -> None:
                         trait_debug.target_id = None
                         piece_motion.clear()
                         preview.dismiss()
+                    elif action == "menu":
+                        run = _new_run()
+                        scene.reset()
+                        trait_debug.target_id = None
+                        piece_motion.clear()
+                        preview.dismiss()
+                        front.enter()
+                        mode = "menu"
                     elif action == "continue":
                         _continue_victory(scene, run, relic_bar)
+        if mode != "play":
+            continue
         if not visual_test.active and run.phase == "preview":
             run.begin_deployment()
         if run.phase in ("preview", "deployment", "battle", "victory", "defeat"):
@@ -398,6 +422,8 @@ def main() -> None:
             shop_piece.clear()
         if run.phase == "starter":
             collection_overlay.update(dt, run)
+        if run.phase == "complete":
+            win_screen.update(dt, run)
         if visual_test.active and visual_test.game is not None:
             render_battle(screen, assets, visual_test.game, board_layout, relic_bar, run, army=deployment.army)
             _blit_text(
@@ -443,6 +469,11 @@ def main() -> None:
                     run.phase == "victory"
                     and scene.result_ready()
                     and continue_rect(window, run).collidepoint(pygame.mouse.get_pos())
+                )
+                or (
+                    run.phase == "complete"
+                    and win_screen.buttons_shown()
+                    and any(rect.collidepoint(pygame.mouse.get_pos()) for rect in win_screen.buttons(window))
                 )
             )
         )

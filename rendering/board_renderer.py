@@ -1,8 +1,9 @@
 import pygame
 
 from config.settings import (
-    BOARD_BEVEL,
     BOARD_HIGHLIGHT,
+    BOARD_INLAY,
+    BOARD_INLAY_LIGHT,
     BOARD_RECESS,
     BOARD_SHADE,
     BOARD_SHADOW_ALPHA,
@@ -27,6 +28,7 @@ class _BoardCache:
         self.square = 0
         self.light: pygame.Surface | None = None
         self.dark: pygame.Surface | None = None
+        self.inlay_surface: pygame.Surface | None = None
         self.frame: tuple[int, int] | None = None
         self.shadow: pygame.Surface | None = None
         self.rim: pygame.Surface | None = None
@@ -37,6 +39,7 @@ class _BoardCache:
         self.square = 0
         self.light = None
         self.dark = None
+        self.inlay_surface = None
         self.frame = None
         self.shadow = None
         self.rim = None
@@ -46,8 +49,9 @@ class _BoardCache:
     def tiles(self, assets: AssetManager, square: int) -> tuple[pygame.Surface, pygame.Surface]:
         if self.square != square or self.light is None or self.dark is None:
             self.square = square
-            self.light = _bevel(assets.scaled("light", (square, square)))
-            self.dark = _bevel(assets.scaled("dark", (square, square)))
+            self.light = assets.scaled("light", (square, square))
+            self.dark = assets.scaled("dark", (square, square))
+            self.inlay_surface = _inlay(square)
         return self.light, self.dark
 
     def drop_shadow(self, frame: pygame.Rect) -> pygame.Surface:
@@ -81,6 +85,8 @@ def draw_board(screen: pygame.Surface, assets: AssetManager, layout: Layout) -> 
         for col in range(6):
             texture = light if (col + row) % 2 == 1 else dark
             screen.blit(texture, layout.square_rect(col, row))
+    # one wooden board: thin inlay lines between squares and a single soft light, not 36 glossy tiles
+    screen.blit(_CACHE.inlay_surface, layout.board.topleft)
     screen.blit(assets.scaled("frame", (frame.w, frame.h)), frame.topleft)
     screen.blit(_CACHE.frame_rim(frame), frame.topleft)
     screen.blit(_CACHE.recess(layout.board.w), layout.board.topleft)
@@ -90,31 +96,21 @@ def clear_board_cache() -> None:
     _CACHE.clear()
 
 
-def _bevel(texture: pygame.Surface) -> pygame.Surface:
-    tile = texture.copy()
-    width, height = tile.get_size()
-    band = max(4, min(8, width // 9))
-    overlay = pygame.Surface((width, height), pygame.SRCALPHA)
-    for step in range(band):
-        fade = (1 - step / band) ** 1.35
-        light = max(1, int(BOARD_HIGHLIGHT * fade))
-        dark = max(1, int(BOARD_SHADE * fade))
-        bevel = max(1, int(BOARD_BEVEL * fade))
-        pygame.draw.line(overlay, (255, 248, 232, light), (step, step), (width - 1 - step, step))
-        pygame.draw.line(overlay, (255, 246, 226, int(light * 0.82)), (step, step), (step, height - 1 - step))
-        pygame.draw.line(overlay, (36, 18, 8, dark), (step, height - 1 - step), (width - 1 - step, height - 1 - step))
-        pygame.draw.line(overlay, (28, 14, 6, int(dark * 0.9)), (width - 1 - step, step), (width - 1 - step, height - 1 - step))
-        if step == 1:
-            pygame.draw.line(overlay, (255, 250, 236, bevel), (2, 2), (width - 4, 2))
-    sheen = pygame.Surface((width, height), pygame.SRCALPHA)
-    pygame.draw.ellipse(
-        sheen,
-        (255, 250, 236, 22),
-        pygame.Rect(width // 8, height // 10, int(width * 0.46), int(height * 0.28)),
-    )
-    tile.blit(overlay, (0, 0))
-    tile.blit(sheen, (0, 0))
-    return tile
+def _inlay(square: int) -> pygame.Surface:
+    side = square * 6
+    surface = pygame.Surface((side, side), pygame.SRCALPHA)
+    light = pygame.Surface((48, 48), pygame.SRCALPHA)
+    for step in range(24, 0, -1):
+        fade = (1 - step / 24) ** 1.5
+        pygame.draw.circle(light, (255, 236, 200, int(BOARD_INLAY_LIGHT * fade)), (16, 14), step + 8)
+    surface.blit(pygame.transform.smoothscale(light, (side, side)), (0, 0))
+    for index in range(1, 6):
+        offset = index * square
+        pygame.draw.line(surface, (*BOARD_INLAY, 210), (offset - 1, 0), (offset - 1, side - 1))
+        pygame.draw.line(surface, (255, 230, 190, 40), (offset, 0), (offset, side - 1))
+        pygame.draw.line(surface, (*BOARD_INLAY, 210), (0, offset - 1), (side - 1, offset - 1))
+        pygame.draw.line(surface, (255, 230, 190, 40), (0, offset), (side - 1, offset))
+    return surface
 
 
 def _drop_shadow(width: int, height: int) -> pygame.Surface:
