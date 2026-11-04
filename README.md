@@ -40,12 +40,12 @@ Windows: `.\.venv\Scripts\python.exe -m unittest discover -s tests -v`
 
 1. A new run starts with one pawn, knight, bishop, rook, queen, and king, plus 5 gold.
 2. Level preview shows the enemy formation.
-3. Deploy fills ranks 1 and 2 from the army. The king is always included and does not use an army slot. Other pieces fill the army capacity, which starts at 5. Survivors keep the squares you chose last battle. The battle screen is three columns: battle status on the left, the board in the center, and your army on the right. You can swap pieces, replace one from the reserve, or press Reset Formation before Start Battle.
+3. Deploy fills ranks 1 and 2 from the army. The king is always included and does not use an army slot. Other pieces fill the army capacity, which starts at 5. Survivors keep the squares you chose last battle. The battle screen is three columns: battle status on the left, the board in the center, and your army on the right. The army panel lists the reserve, the pieces on the board, and, during a battle, the pieces that have fallen. Only reserve and fallen pieces take clicks. You can swap pieces, replace one from the reserve, or press Reset Formation before Start Battle.
 4. You play white. Black is played by the enemy AI, which gets a personality each battle. Clear every enemy piece to win. If your king is captured, the run ends.
 5. A win awards 3 gold and keeps the board up. A level-complete banner shows the reward, then Continue slides the board off to the left while the shop slides in from the right.
 6. The shop Continue button slides the shop away and brings in the next level, with that enemy army already on the board.
 7. Starting the battle keeps the board where it is and shows a short Battle Start banner.
-8. After level 5, Continue fades to the run-complete screen instead of another shop. Losing the king shows Game Over.
+8. After level 5, Continue fades to the win screen instead of another shop. The crown comes down onto the panel and glints, coins fall behind it, the surviving army pops onto a plinth, and the run's totals count up: battles won, gold earned, relics collected and pieces lost. New Run starts again and Main Menu goes back to the menu. Losing the king shows a quieter Game Over.
 
 ## Scene changes
 
@@ -107,7 +107,7 @@ Hooks in use:
 
 ### Relic row
 
-Owned relics sit in a row above the chessboard during deployment and battle, in the order they were acquired. The row uses the same parchment cards and artwork as the collection. An empty row says "No Relics".
+Owned relics stand on a carved shelf above the chessboard during deployment and battle, in the order they were acquired. At this size a card shows its artwork and its name in Cinzel, at 11px or larger; the full card text is in the hover tooltip and the click-through card. An empty shelf says "No relics yet".
 
 Up to five cards are visible. Further relics stay owned and keep working; the mouse wheel over the row, or the arrows at the ends, scrolls them into view.
 
@@ -205,9 +205,15 @@ The files in `assets/pieces/normal/` stay as they are. Each special piece is the
 
 Tinted copies are cached by color, piece type, trait, size, and whether high readability is on. Resizing the window clears that cache. The ring stays on the square with the shadow. The tint, crosshair, cracks, and badge rise with the piece. Hovering a special piece shows its name in the trait color and its effect beside the square. `TRAIT_HIGH_READABILITY` in `config/settings.py` starts in the stronger look. Press F6 to switch to the quieter look and back.
 
+## Look
+
+The screens share one painted look, taken from the Techies_GA1 reference card: muted umber and sepia, aged parchment, burgundy cloth, antique gold for titles and prices, and a warm candle glow. `rendering/style.py` holds it: the palette, title and body fonts, torn parchment panels, carved walnut panels, wooden plaque buttons, engraved dividers, soft shadows and the canvas grain over the backdrop. Textures are drawn in code and cached by size, and the parchment reuses the relic card's paper. `draw_button` in `rendering/hud_renderer.py` draws a plaque, so every button follows it.
+
+Titles use Cinzel, bundled in `assets/fonts/` under the SIL Open Font License 1.1 (`assets/fonts/Cinzel-OFL.txt`), which allows shipping it with the game. Rules text stays in Georgia, which Windows and macOS both include.
+
 ## Board depth
 
-The board stays on the same squares the mouse already uses. Depth is drawn around that grid. A soft shadow sits down and to the right of the frame. A dark lip along the lower edge gives the frame thickness. Each square keeps its existing art and gets a light top-left edge, a dark bottom-right edge, and a faint sheen. The opening inside the frame is shaded so the tiles look set into the wood. The original frame picture is not changed.
+The board stays on the same squares the mouse already uses. Depth is drawn around that grid. A soft shadow sits down and to the right of the frame. A dark lip along the lower edge gives the frame thickness. The squares are flat: each keeps its existing art, a thin dark inlay line runs between them, and one soft light falls across the whole board, so it reads as one wooden board rather than 36 tiles. The opening inside the frame is shaded so the squares look set into the wood. The original frame picture is not changed.
 
 A selected square is an inset gold ring with a slow glow, not a flat box. Empty-move dots sit on the tile with a small contact shadow. Capture marks are inset on the square. Piece shadows and trait rings are drawn after those marks, and the lifted piece is drawn last.
 
@@ -216,11 +222,11 @@ Tune the depth in `config/settings.py`:
 - `BOARD_SHADOW_OFFSET_X`, `BOARD_SHADOW_OFFSET_Y`, `BOARD_SHADOW_ALPHA` — the shadow under the board
 - `BOARD_THICKNESS` — the dark lip on the lower frame
 - `BOARD_RECESS` — how deep the tile opening looks
-- `BOARD_BEVEL` — the inner tile edge
+- `BOARD_INLAY`, `BOARD_INLAY_LIGHT` — the line between squares and the light across the board
 - `BOARD_HIGHLIGHT`, `BOARD_SHADE` — upper-left light and lower-right shade
 - `BOARD_SELECT_GLOW` — the selected-square ring
 
-The board is drawn as the shadow, the lower lip, the tiles, the frame, the recess, then the move marks, then piece shadows and rings, then the pieces. The selected piece is drawn last. Locks are drawn after that. Hovering a special piece shows its name and effect beside the square. Square positions are unchanged, so clicks still land on the same tiles. Cached edges are cleared when the window is resized.
+The board is drawn as the shadow, the lower lip, the tiles, the frame, the recess, then the move marks, then piece shadows and rings, then the pieces. The selected piece is drawn last. Locks are drawn after that. Hovering a special piece shows its name and effect beside the square. Square positions are unchanged, so clicks still land on the same tiles. The cached inlay and edges are cleared when the window is resized.
 
 ## Piece miniatures
 
@@ -253,6 +259,7 @@ The board is a copy. Traits are assigned with `TraitManager` onto those copies. 
 
 ## Controls
 
+- Main menu: Start, How to Play, Collection, Exit. Collection shows every relic card, special piece and enemy personality. It is read-only: clicking a relic card flips it, and nothing there changes a run. The mouse wheel, the arrow keys and Page Up/Down scroll the relics; Escape or Back returns to the menu.
 - Shop: click Buy on a card, click the reroll board, or click Continue.
 - Deployment: click a piece in the army, then click a highlighted square. Click a deployed piece again to take it back. You can also drag a piece onto a square. Start Battle begins the fight once the king is deployed.
 - Battle: click one of your pieces, then a highlighted square. Green dots are empty squares. Red outlines are captures. Black moves on its own.

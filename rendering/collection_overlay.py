@@ -5,6 +5,7 @@ from game.traits import trait_name
 from game.run_state import RunState
 from game.transitions.easing import ease_out_cubic
 from rendering.asset_manager import AssetManager
+from rendering import style
 from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font
 from rendering.relic_card import RelicCardRenderer
 from rendering.special_piece_renderer import special_pieces
@@ -72,7 +73,9 @@ class CollectionOverlay:
         title = "Choose a Relic" if run.shop.collection_open == "relic" else "Choose a Piece"
         if run.phase == "starter":
             title = "Choose a Starter Relic"
-        _blit_text(screen, title, get_font(32, bold=True), (245, 232, 210), center=(window[0] // 2, int(window[1] * 0.12)))
+        center = (window[0] // 2, int(window[1] * 0.12))
+        style.text(screen, title, style.title_font(34, bold=True), style.IVORY, shadow=(8, 4, 2, 220), center=center)
+        style.ornament_rule(screen, (center[0], center[1] + 30), 320, style.GOLD_DIM)
         choices = self._choices(run)
         rects = self._card_rects(run, window)
         for index, rect in enumerate(rects):

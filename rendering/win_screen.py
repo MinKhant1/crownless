@@ -18,7 +18,9 @@ from rendering.piece_visual_effects import draw_contact_shadow, figurines
 from rendering.relic_card import RelicCardRenderer
 
 TITLE = "The Crown Reclaimed"
-SUBTITLE = "All five battles are won, and the crown is yours again."
+_NUMBERS = ("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten")
+_COUNT = _NUMBERS[MAX_LEVEL - 1] if 1 <= MAX_LEVEL <= len(_NUMBERS) else str(MAX_LEVEL)
+SUBTITLE = f"All {_COUNT} battles are won, and the crown is yours again."
 
 # (start, seconds)
 CROWN_DROP = (0.0, 1.15)

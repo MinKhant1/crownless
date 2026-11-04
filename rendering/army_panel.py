@@ -65,8 +65,9 @@ class ArmyPanel:
         tooltip: tuple[ArmyEntry, pygame.Rect] | None = None
         for key, label, heading, grid, pieces in groups:
             if heading.bottom > view.top and heading.top < view.bottom:
-                count = f"{label}  \u00b7  {len(pieces)}"
-                style.text(screen, count, style.title_font(15, bold=False), HEADING, shadow=(8, 4, 2, 200), midleft=(heading.x + 6, heading.centery))
+                font = style.title_font(15, bold=False)
+                style.text(screen, label, font, HEADING, shadow=(8, 4, 2, 200), midleft=(heading.x + 6, heading.centery))
+                style.text(screen, str(len(pieces)), style.title_font(16, bold=True), style.IVORY_SOFT, shadow=(8, 4, 2, 200), midright=(heading.right - 6, heading.centery))
             for index, piece in enumerate(pieces):
                 rect = _icon_rect(grid, icon, index)
                 if not rect.colliderect(view):
