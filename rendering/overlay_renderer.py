@@ -13,6 +13,7 @@ TRAIT_COLORS = {
     "explosive": (226, 78, 28),
     "ghost": (92, 196, 220),
     "wooden": (122, 74, 32),
+    "magnet": (146, 92, 206),
 }
 
 
@@ -92,6 +93,8 @@ def draw_trait_badge(screen: pygame.Surface, rect: pygame.Rect, trait: str) -> N
         pygame.draw.line(screen, ink, (center[0] + 1, center[1] - 2), (center[0] + bomb + 2, center[1] - bomb - 1), max(1, radius // 8))
     elif trait == "ghost":
         pygame.draw.circle(screen, (232, 252, 255), center, max(2, radius // 2))
+    elif trait == "magnet":
+        _horseshoe(screen, center, max(3, (radius - 2) * 2 // 3), ink)
     else:
         log = pygame.Rect(0, 0, max(6, box.w - 8), max(4, box.h // 3))
         log.center = center
@@ -132,6 +135,15 @@ def _star(screen: pygame.Surface, center: tuple[int, int], radius: int, color: t
         distance = radius if index % 2 == 0 else max(2, int(radius * 0.42))
         points.append((center[0] + math.cos(angle) * distance, center[1] + math.sin(angle) * distance))
     pygame.draw.polygon(screen, color, points)
+
+
+def _horseshoe(screen: pygame.Surface, center: tuple[int, int], radius: int, color: tuple[int, int, int]) -> None:
+    # a U-shaped magnet: two straight legs and a round bottom
+    width = max(2, radius // 2)
+    bend = pygame.Rect(center[0] - radius, center[1] - radius, radius * 2, radius * 2)
+    pygame.draw.circle(screen, color, bend.center, radius, width, draw_bottom_left=True, draw_bottom_right=True)
+    for leg in (bend.left, bend.right - width):
+        pygame.draw.rect(screen, color, (leg, bend.top, width, radius + 1))
 
 
 _RINGS = _RingCache()

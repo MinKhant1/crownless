@@ -91,7 +91,7 @@ class RelicEffectTests(unittest.TestCase):
         run.battle.click(0, 3)
         board = run.battle.game.board
         self.assertIsNone(board.piece_at(1, 3))
-        self.assertEqual(board.piece_at(0, 3).kind, "rook")
+        self.assertIsNone(board.piece_at(0, 3))  # Explosive takes the capturing rook with it
         self.assertIsNotNone(board.piece_at(5, 6))
 
     def test_squire_spawns_behind_a_knight_and_skips_the_edge(self):

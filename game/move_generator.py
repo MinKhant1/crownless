@@ -57,14 +57,21 @@ def _can_capture(board: Board, occupant: Piece, color: str) -> bool:
     return True
 
 
-def _ray(board: Board, col: int, row: int, directions: tuple[tuple[int, int], ...]) -> list[tuple[int, int]]:
+def _passes(piece: Piece, occupant: Piece) -> bool:
+    # a Ghost slides through its own side's pieces but never lands on one
+    return piece.trait == "ghost" and occupant.color == piece.color
+
+
+def _ray(board: Board, piece: Piece, directions: tuple[tuple[int, int], ...]) -> list[tuple[int, int]]:
+    col, row = piece.col, piece.row
     squares: list[tuple[int, int]] = []
     for delta_col, delta_row in directions:
         next_col = col + delta_col
         next_row = row + delta_row
         while in_bounds(next_col, next_row):
             squares.append((next_col, next_row))
-            if board.piece_at(next_col, next_row) is not None:
+            occupant = board.piece_at(next_col, next_row)
+            if occupant is not None and not _passes(piece, occupant):
                 break
             next_col += delta_col
             next_row += delta_row
@@ -100,11 +107,11 @@ def attacks_of(board: Board, piece: Piece) -> list[tuple[int, int]]:
     if piece.kind == "king":
         return _offsets(piece.col, piece.row, KING_OFFSETS)
     if piece.kind == "bishop":
-        return _ray(board, piece.col, piece.row, BISHOP_DIRS)
+        return _ray(board, piece, BISHOP_DIRS)
     if piece.kind == "rook":
-        return _ray(board, piece.col, piece.row, ROOK_DIRS)
+        return _ray(board, piece, ROOK_DIRS)
     if piece.kind == "queen":
-        return _ray(board, piece.col, piece.row, BISHOP_DIRS + ROOK_DIRS)
+        return _ray(board, piece, BISHOP_DIRS + ROOK_DIRS)
     return []
 
 
@@ -125,7 +132,7 @@ def _slide_moves(board: Board, piece: Piece, directions: tuple[tuple[int, int], 
             occupant = board.piece_at(col, row)
             if occupant is None:
                 moves.append(_move(piece, col, row))
-            else:
+            elif not _passes(piece, occupant):
                 if _can_capture(board, occupant, piece.color):
                     moves.append(_move(piece, col, row))
                 break

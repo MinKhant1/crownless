@@ -13,3 +13,6 @@ class TraitContext:
     @property
     def rules(self):
         return self._context.rules
+
+    def flash(self, col: int, row: int, color: tuple[int, int, int]) -> None:
+        self._context.flash(col, row, color)

@@ -3,7 +3,7 @@ from game.traits.trait_registry import TRAIT_IDS, TRAIT_SHORT, TRAITS, TraitDef,
 
 
 def register_trait_handlers(dispatcher, context) -> None:
-    from game.traits.effects import explosive, ghost, golden, wanted, wooden
+    from game.traits.effects import explosive, ghost, golden, magnet, wanted, wooden
     from game.traits.trait_context import TraitContext
 
     traits = TraitContext(context)
@@ -12,6 +12,7 @@ def register_trait_handlers(dispatcher, context) -> None:
     explosive.register(dispatcher, traits)
     ghost.register(dispatcher, traits)
     wooden.register(dispatcher, traits)
+    magnet.register(dispatcher, traits)
 
 
 __all__ = [

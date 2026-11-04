@@ -72,7 +72,7 @@ RELICS: tuple[RelicDef, ...] = (
         description="At battle's start, one piece in front of the King becomes a random Special Piece.",
         effect_id="crowns_blessing",
         trigger="on_battle_start",
-        parameters={"traits": ("golden", "wanted", "explosive", "wooden")},
+        parameters={"traits": ("golden", "wanted", "explosive", "wooden", "magnet")},
     ),
     RelicDef(
         id="first_blood",
@@ -122,7 +122,7 @@ RELICS: tuple[RelicDef, ...] = (
         description="One random surviving Pawn becomes a Special Piece.",
         effect_id="royal_promotion",
         trigger="on_battle_end",
-        parameters={"traits": ("golden", "wanted", "explosive", "wooden")},
+        parameters={"traits": ("golden", "wanted", "explosive", "wooden", "magnet")},
     ),
     RelicDef(
         id="squire",

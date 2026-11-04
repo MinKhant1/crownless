@@ -375,7 +375,7 @@ def _relic_blocks(width: int) -> list[tuple[str, int, object]]:
 
 
 def _piece_blocks(width: int) -> list[tuple[str, int, object]]:
-    intro = f"A special piece keeps its chess move and adds a trait. Golden pieces pay {GOLDEN_BONUS} gold for each one that is still on the board when you win. A Ghost is temporary and is removed when the battle ends. A piece that captures a Wooden piece cannot move for 2 turns. Wanted and Explosive are marked on the piece; their own battle effects are not active yet. Chain Fuse, if you own it, reacts when an Explosive piece dies."
+    intro = f"A special piece keeps its chess move and adds a trait. Golden pieces pay {GOLDEN_BONUS} gold for each one that is still on the board when you win. A Ghost slides through your own pieces and is removed when the battle ends. A piece that captures a Wooden piece cannot move for 2 turns, and one that captures an Explosive piece is destroyed with it. Enemies make a Wanted piece their main target. Enemies next to a Magnet cannot move backward. Chain Fuse, if you own it, sets off Explosive pieces next to one that goes off."
     return [
         ("heading", 36, "Special pieces"),
         ("text", _text_height(intro, width), intro),

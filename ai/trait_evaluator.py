@@ -2,8 +2,9 @@
 
 Castle Wall blocks and Wooden locks are read from the live rules. Chain Fuse,
 recruitment, conversion, and squire are not replayed, because those effects
-write into the running battle. Capturing a Wooden piece is treated as hanging
-the mover, since the lock is applied on the live capture and is not on the copy.
+write into the running battle. Capturing a Wooden or Explosive piece is treated
+as hanging the mover, since the lock or blast is applied on the live capture and
+is not on the copy.
 """
 
 from game.move_generator import attacks_of
@@ -18,7 +19,8 @@ def evaluate_move(board, rules, move, previous=None, trait=None) -> dict:
     if trait is None:
         trait = None if mover is None else mover.ai_trait
     weights = weights_for(trait, revenge is not None and trait == VENGEFUL)
-    focus = revenge if trait == VENGEFUL and revenge is not None else _priority_piece(board)
+    # a Wanted piece replaces the King as every personality's main target
+    focus = _wanted_piece(board) or (revenge if trait == VENGEFUL and revenge is not None else _priority_piece(board))
     before = _threatened_value(board, "black")
     clone = board.copy()
     clone.apply_move(move)
@@ -26,7 +28,7 @@ def evaluate_move(board, rules, move, previous=None, trait=None) -> dict:
     attacked = _attacked_pieces(clone, "black")
     hanging = _best_capture_value(clone, rules, "white")
     gain = 0 if captured is None else _value(captured)
-    if captured is not None and captured.trait == "wooden" and mover is not None:
+    if captured is not None and captured.trait in ("wooden", "explosive") and mover is not None:
         hanging = max(hanging, _value(mover))
     risk = min(1.0, max(0, hanging - gain) / 12.0)
     if after > before:
@@ -78,6 +80,11 @@ def _priority_piece(board):
             best = value
             found = piece
     return found
+
+
+def _wanted_piece(board):
+    wanted = [piece for piece in board.pieces if piece.color == "white" and piece.col is not None and piece.trait == "wanted"]
+    return max(wanted, key=_value, default=None)
 
 
 def _revenge_target(board):

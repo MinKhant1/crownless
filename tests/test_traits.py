@@ -303,10 +303,11 @@ class OverlayTests(unittest.TestCase):
     def test_tooltip_copy(self):
         samples = {
             "golden": ("Golden Knight", "Earn +2 Gold if this piece survives the battle."),
-            "ghost": ("Ghost Bishop", "Temporary piece. Disappears after battle."),
+            "ghost": ("Ghost Bishop", "Slides through your own pieces. Disappears after battle."),
             "wooden": ("Wooden Rook", "A piece that captures this cannot move for 2 turns."),
-            "wanted": ("Wanted Queen", "Effect coming soon."),
-            "explosive": ("Explosive Pawn", "Effect coming soon."),
+            "wanted": ("Wanted Queen", "Enemies make this piece their main target."),
+            "explosive": ("Explosive Pawn", "A piece that captures this is destroyed too."),
+            "magnet": ("Magnet Knight", "Adjacent enemies cannot move backward."),
         }
         kinds = {
             "golden": "knight",
@@ -314,6 +315,7 @@ class OverlayTests(unittest.TestCase):
             "wooden": "rook",
             "wanted": "queen",
             "explosive": "pawn",
+            "magnet": "knight",
         }
         for trait, expected in samples.items():
             lines = trait_tooltip_lines(Piece(1, kinds[trait], "black", trait=trait))

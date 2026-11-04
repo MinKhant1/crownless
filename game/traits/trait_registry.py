@@ -10,10 +10,11 @@ class TraitDef:
 
 TRAITS: tuple[TraitDef, ...] = (
     TraitDef("golden", "Golden", "Earn +2 Gold if this piece survives the battle."),
-    TraitDef("wanted", "Wanted", "Effect coming soon."),
-    TraitDef("explosive", "Explosive", "Effect coming soon."),
-    TraitDef("ghost", "Ghost", "Temporary piece. Disappears after battle."),
+    TraitDef("wanted", "Wanted", "Enemies make this piece their main target."),
+    TraitDef("explosive", "Explosive", "A piece that captures this is destroyed too."),
+    TraitDef("ghost", "Ghost", "Slides through your own pieces. Disappears after battle."),
     TraitDef("wooden", "Wooden", "A piece that captures this cannot move for 2 turns."),
+    TraitDef("magnet", "Magnet", "Adjacent enemies cannot move backward."),
 )
 
 TRAIT_IDS: tuple[str, ...] = tuple(trait.id for trait in TRAITS)
@@ -24,6 +25,7 @@ TRAIT_SHORT = {
     "explosive": "EXP",
     "ghost": "GHO",
     "wooden": "WDN",
+    "magnet": "MAG",
 }
 
 

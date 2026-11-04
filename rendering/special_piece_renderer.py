@@ -12,7 +12,7 @@ class SpecialPieceRenderer:
 
     def image(self, assets, color: str, kind: str, trait: str | None, box: int) -> pygame.Surface:
         fitted = assets.fitted(f"{color}_{kind}", box, box)
-        if trait not in ("golden", "ghost", "wooden", "explosive"):
+        if trait not in ("golden", "ghost", "wooden", "explosive", "magnet"):
             return fitted
         strong = trait_style.strong
         key = (color, kind, trait, fitted.get_width(), fitted.get_height(), strong)
@@ -39,6 +39,11 @@ def _paint(source: pygame.Surface, trait: str, strong: bool) -> pygame.Surface:
         if not strong:
             return body
         return _outline(body, (72, 42, 22), 2)
+    if trait == "magnet":
+        body = _tint(source, (150, 104, 214) if strong else (172, 140, 214), 0.80 if strong else 0.55)
+        if not strong:
+            return body
+        return _outline(body, (98, 60, 152), 2)
     body = _tint(source, (228, 64, 24) if strong else (214, 96, 42), 0.76 if strong else 0.45)
     if not strong:
         return body
