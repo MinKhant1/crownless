@@ -10,6 +10,7 @@ from config.settings import (
     RELIC_COLLECTION_PRICE,
     RELIC_PRICE,
     REROLL_PRICE,
+    SHOP_REROLL_TILT,
     SCENE_SLIDE_TIME,
     SHOP_CARD_STAGGER,
     TURN_CHECK,
@@ -102,11 +103,12 @@ def _draw_price(screen: pygame.Surface, assets: AssetManager, tag: pygame.Rect, 
     _coin_amount(screen, assets, tag, price, DARK_TEXT if affordable else (150, 64, 58))
 
 
-def _coin_amount(screen: pygame.Surface, assets: AssetManager, rect: pygame.Rect, amount: int, color) -> None:
-    font = get_font(max(13, int(rect.h * 0.62)), bold=True)
+def _coin_amount(screen: pygame.Surface, assets: AssetManager, rect: pygame.Rect, amount: int, color, height: int = 0) -> None:
+    height = height or rect.h
+    font = get_font(max(13, int(height * 0.62)), bold=True)
     text_w, _text_h = font.size(str(amount))
-    coin = assets.fitted("gold", int(rect.h * 0.56), int(rect.h * 0.56)) if assets.has("gold") else None
-    gap = max(3, rect.h // 10)
+    coin = assets.fitted("gold", int(height * 0.56), int(height * 0.56)) if assets.has("gold") else None
+    gap = max(3, height // 10)
     total = text_w + (coin.get_width() + gap if coin else 0)
     x = rect.centerx - total // 2
     if coin:
@@ -178,7 +180,10 @@ def _draw_reroll(screen: pygame.Surface, assets: AssetManager, layout: ShopLayou
         label = label.move(-bounds.x, -bounds.y)
         origin = bounds.topleft
     target.blit(assets.scaled("reroll_board", (layout.reroll.w, layout.reroll.h)), reroll.topleft)
-    _coin_amount(target, assets, label, REROLL_PRICE, DARK_TEXT)
+    face = pygame.Surface((label.w, label.h * 2), pygame.SRCALPHA)
+    _coin_amount(face, assets, face.get_rect(), REROLL_PRICE, DARK_TEXT, height=int(label.h * 1.9))
+    face = pygame.transform.rotozoom(face, SHOP_REROLL_TILT, 1.0)
+    target.blit(face, face.get_rect(center=label.center))
     if plate is not None:
         plate.set_alpha(alpha)
         screen.blit(plate, origin)

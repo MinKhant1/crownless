@@ -67,7 +67,9 @@ SHOP_PRICE_GAP_FRAC = 0.008
 SHOP_BUY = (0.17, 0.755, 0.66, 0.16)
 SHOP_ICON = (0.14, 0.06, 0.72, 0.58)
 SHOP_REROLL_WIDTH_FRAC = 0.52
-SHOP_REROLL_LABEL = (0.525, 0.34, 0.335, 0.32)
+# parchment plate on reroll_board.png, as fractions of the board, and its lean in degrees
+SHOP_REROLL_LABEL = (0.512, 0.382, 0.33, 0.16)
+SHOP_REROLL_TILT = 2.8
 SHOP_GOLD_WIDTH_FRAC = 0.42
 
 PIECE_KINDS = ("pawn", "rook", "knight", "bishop", "queen", "king")
