@@ -43,6 +43,10 @@ class RunState:
         self.battle_roster: tuple[tuple[int, str, str | None], ...] = ()
         self.shop_rerolls = 0
         self.battle_summary = None
+        # totals for the win screen
+        self.battles_won = 0
+        self.gold_earned = 0
+        self.pieces_lost = 0
         self.prepare_level()
 
     @classmethod
@@ -275,6 +279,9 @@ class RunState:
         self._keep_survivors()
         self.gold += VICTORY_GOLD + interest_amount(self)
         self.battle_summary = build_battle_summary(self, gold_before, relic_gold, reroll_gain, present)
+        self.battles_won += 1
+        self.gold_earned += self.gold - gold_before
+        self.pieces_lost += self.battle_summary.permanent_losses
         self.phase = "victory"
         self.notice = ""
 

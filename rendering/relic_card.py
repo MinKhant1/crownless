@@ -246,6 +246,11 @@ def _compose_mini(assets: AssetManager, relic: RelicDef, width: int, height: int
     for line in lines:
         shade = font.render(line, True, (8, 4, 2))
         face = font.render(line, True, (241, 228, 200))
+        if face.get_width() > width - 4:
+            # a single long word on a very narrow card: squeeze it rather than clip it
+            fit = (width - 4, face.get_height())
+            shade = pygame.transform.smoothscale(shade, fit)
+            face = pygame.transform.smoothscale(face, fit)
         spot = face.get_rect(midtop=(width // 2, y))
         card.blit(shade, spot.move(0, 1))
         card.blit(face, spot)

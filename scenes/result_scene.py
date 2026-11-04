@@ -9,6 +9,7 @@ from rendering.asset_manager import AssetManager
 from rendering import style
 from rendering.hud_renderer import _blit_text, draw_background, draw_button, get_font
 from rendering.victory_summary import continue_rect
+from rendering.win_screen import win_screen
 
 
 def result_button(window: tuple[int, int], run: RunState) -> tuple[pygame.Rect, pygame.Rect]:
@@ -21,7 +22,7 @@ def result_button(window: tuple[int, int], run: RunState) -> tuple[pygame.Rect, 
 
 def outcome_button(window: tuple[int, int], run: RunState) -> pygame.Rect | None:
     if run.phase == "complete":
-        return result_button(window, run)[1]
+        return win_screen.buttons(window)[0]
     if run.phase == "victory":
         return continue_rect(window, run)
     if run.phase == "defeat":
@@ -30,6 +31,15 @@ def outcome_button(window: tuple[int, int], run: RunState) -> pygame.Rect | None
 
 
 def handle_result_click(run: RunState, pos: tuple[int, int], window: tuple[int, int]) -> str | None:
+    if run.phase == "complete":
+        if not win_screen.buttons_shown():
+            return None
+        new_run, menu = win_screen.buttons(window)
+        if new_run.collidepoint(pos):
+            return "restart"
+        if menu.collidepoint(pos):
+            return "menu"
+        return None
     button = outcome_button(window, run)
     if button is None or not button.collidepoint(pos):
         return None
@@ -41,6 +51,9 @@ def handle_result_click(run: RunState, pos: tuple[int, int], window: tuple[int, 
 
 
 def draw_result(screen: pygame.Surface, assets: AssetManager, run: RunState, backdrop: bool = True) -> None:
+    if run.phase == "complete":
+        win_screen.draw(screen, assets, run, backdrop=backdrop)
+        return
     if backdrop:
         draw_background(screen, assets)
     panel, button = result_button(screen.get_size(), run)
