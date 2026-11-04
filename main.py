@@ -69,9 +69,7 @@ def main() -> None:
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
     clock = pygame.time.Clock()
     assets = AssetManager(ROOT / "assets")
-    run = RunState.new()
-    if DEBUG_SHOP_GOLD is not None:
-        run.gold = DEBUG_SHOP_GOLD
+    run = _new_run()
     deployment = DeploymentScene()
     relics = RelicOverlay()
     relic_bar = RelicBar()
@@ -116,9 +114,7 @@ def main() -> None:
             if current_mode == "menu":
                 action = front.on_event(event, window)
                 if action == "start":
-                    current_run = RunState.new()
-                    if DEBUG_SHOP_GOLD is not None:
-                        current_run.gold = DEBUG_SHOP_GOLD
+                    current_run = _new_run()
                     scene.reset()
                     piece_motion.clear()
                     relic_bar.clear()
@@ -481,6 +477,13 @@ def _pointer_blocked(scene: SceneManager, event: pygame.event.Event) -> bool:
     if not scene.blocks_pointer():
         return False
     return event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEWHEEL)
+
+
+def _new_run() -> RunState:
+    run = RunState.new()
+    if DEBUG_SHOP_GOLD is not None:
+        run.gold = DEBUG_SHOP_GOLD
+    return run
 
 
 def _continue_victory(scene: SceneManager, run: RunState, relic_bar: RelicBar) -> None:

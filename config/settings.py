@@ -16,7 +16,7 @@ ARMY_SIZE = 6
 ARMY_CAPACITY = 6
 
 STARTING_GOLD = 5
-DEBUG_SHOP_GOLD = 1000
+DEBUG_SHOP_GOLD = None  # set a number, e.g. 1000, to test the shop with lots of gold
 STARTING_NON_KING_CAPACITY = 5
 PIECE_PRICE = 5
 RELIC_PRICE = 7

@@ -316,3 +316,10 @@ class RunTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StartingGoldTests(unittest.TestCase):
+    def test_a_run_started_from_the_menu_has_the_rulebook_gold(self):
+        import main
+
+        self.assertEqual(main._new_run().gold, 5)
