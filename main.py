@@ -43,6 +43,7 @@ from scenes.deployment_scene import DeploymentScene
 from scenes.relic_overlay import RelicOverlay
 from rendering.victory_summary import continue_rect
 from scenes.result_scene import handle_result_click
+from scenes.collection import CollectionScreen
 from scenes.how_to_play import HowToPlayScreen
 from scenes.main_menu import MainMenuScreen
 from scenes.screen_menu import ScreenMenu
@@ -86,6 +87,7 @@ def main() -> None:
         visual_test.open(run)
     front = MainMenuScreen()
     guide = HowToPlayScreen()
+    collection = CollectionScreen()
     mode = "play" if SPECIAL_PIECE_VISUAL_TEST else "menu"
     if mode == "menu":
         front.enter()
@@ -126,9 +128,16 @@ def main() -> None:
                 if action == "guide":
                     guide.open()
                     current_mode = "guide"
+                elif action == "collection":
+                    collection.open()
+                    current_mode = "collection"
                 elif action == "exit":
                     running = False
                     return current_mode, current_run, current_cursor, current_dt
+            elif current_mode == "collection":
+                if collection.on_event(event, window) == "back":
+                    front.enter()
+                    current_mode = "menu"
             elif guide.on_event(event, window) == "back":
                 front.enter()
                 current_mode = "menu"
@@ -137,6 +146,10 @@ def main() -> None:
             front.update(current_dt, window)
             front.draw(screen, assets)
             hand = front.wants_hand(window)
+        elif current_mode == "collection":
+            collection.update(current_dt, window)
+            collection.draw(screen, assets)
+            hand = collection.wants_hand()
         else:
             guide.update(current_dt, window)
             guide.draw(screen, assets)

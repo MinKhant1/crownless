@@ -4,15 +4,19 @@ import pygame
 
 from game.traits import TRAIT_IDS
 from rendering.card_motion import approach
-from rendering.hud_renderer import draw_background, draw_button, draw_relic_glow
+from rendering import style
+from rendering.hud_renderer import draw_background
 from scenes.menu_piece import MenuPiece, draw_trait_note
+
+
+MENU_BUTTONS = (("start", "Start"), ("guide", "How to Play"), ("collection", "Collection"), ("exit", "Exit"))
 
 
 class MainMenuScreen:
     def __init__(self, rng: random.Random | None = None) -> None:
         self.rng = rng or random.Random()
         self.king = MenuPiece("king", self.rng.choice(TRAIT_IDS))
-        self.buttons = (("start", "START"), ("guide", "HOW TO PLAY"), ("exit", "EXIT"))
+        self.buttons = MENU_BUTTONS
         self._hover = ""
         self._pressed = ""
         self._hot = {key: 0.0 for key, _label in self.buttons}
@@ -94,7 +98,7 @@ def _layout(window: tuple[int, int]) -> dict[str, pygame.Rect]:
     gap = max(12, int(height * 0.018))
     top = king.bottom + max(18, int(height * 0.03))
     buttons = {}
-    for index, (key, _label) in enumerate((("start", "START"), ("guide", "HOW TO PLAY"), ("exit", "EXIT"))):
+    for index, (key, _label) in enumerate(MENU_BUTTONS):
         rect = pygame.Rect(0, 0, button_w, button_h)
         rect.midtop = (width // 2, top + index * (button_h + gap))
         buttons[key] = rect
@@ -109,11 +113,8 @@ def _draw_logo(screen: pygame.Surface, assets, bounds: pygame.Rect) -> None:
 
 
 def _draw_menu_button(screen: pygame.Surface, rect: pygame.Rect, label: str, hover: float, pressed: float) -> None:
-    scale = 1.0 + 0.045 * hover - 0.035 * pressed
+    scale = 1.0 + 0.04 * hover - 0.03 * pressed
     drawn = pygame.Rect(0, 0, max(1, int(rect.w * scale)), max(1, int(rect.h * scale)))
     drawn.center = rect.center
-    if hover > 0.15:
-        draw_relic_glow(screen, drawn)
-    draw_button(screen, drawn, label, font_size=max(18, drawn.h // 2))
-    if hover > 0.5:
-        pygame.draw.rect(screen, (232, 196, 96), drawn, width=2, border_radius=10)
+    state = "pressed" if pressed > 0.5 else "hover" if hover > 0.5 else "idle"
+    style.draw_plaque_button(screen, drawn, label, state, font_size=max(18, int(drawn.h * 0.46)))
