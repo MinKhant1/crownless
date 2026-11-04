@@ -66,17 +66,6 @@ def draw_relic_glow(screen: pygame.Surface, rect: pygame.Rect) -> None:
     screen.blit(plate, (rect.x - pad, rect.y - pad))
 
 
-def overlay_buy_rect(item: pygame.Rect, label: str, place: str = "center") -> pygame.Rect:
-    font = get_font(12, bold=True)
-    text_w, text_h = font.size(label)
-    rect = pygame.Rect(0, 0, text_w + 14, max(16, text_h + 6))
-    if place == "top":
-        rect.midbottom = (item.centerx, item.top - 6)
-    else:
-        rect.center = item.center
-    return rect
-
-
 def draw_button(
     screen: pygame.Surface,
     rect: pygame.Rect,
@@ -89,7 +78,11 @@ def draw_button(
     text = LIGHT_TEXT if enabled else (168, 156, 142)
     pygame.draw.rect(screen, fill, rect, border_radius=10)
     pygame.draw.rect(screen, border, rect, width=2, border_radius=10)
-    _blit_text(screen, label, get_font(font_size, bold=True), text, center=rect.center)
+    font = get_font(font_size, bold=True)
+    while font_size > 11 and font.size(label)[0] > rect.w - 12:
+        font_size -= 1
+        font = get_font(font_size, bold=True)
+    _blit_text(screen, label, font, text, center=rect.center)
 
 
 def _blit_text(

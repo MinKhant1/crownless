@@ -17,7 +17,7 @@ from rendering.card_motion import (
     preview_order,
     step_motion,
 )
-from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font, overlay_buy_rect
+from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font
 from rendering.relic_card import CARD_RATIO, RelicCardRenderer
 from rendering.relic_flip import shop_reveal
 from rendering.relic_tooltip_renderer import draw_relic_tooltip
@@ -110,10 +110,7 @@ class ShopRelicHand:
         slot = next((item for item in self.slots(run, layout, window) if item.relic_id == self.selected_card_id), None)
         if slot is None:
             return None
-        rect = overlay_buy_rect(slot.drawn, self.buy_caption(run)[0], "top")
-        bounds = pygame.Rect(8, 8, max(1, window[0] - 16), max(1, window[1] - 16))
-        rect.clamp_ip(bounds)
-        return rect
+        return layout.buys[1].copy()
 
     def wants_hand(self, run: RunState, layout: ShopLayout, window: tuple[int, int]) -> bool:
         if self.hovered_card_id is not None:
@@ -221,7 +218,7 @@ class ShopRelicHand:
             if button is not None:
                 label, enabled = self.buy_caption(run)
                 moved = button.move(dx, 0)
-                draw_button(screen, moved, label, enabled=enabled, font_size=12)
+                draw_button(screen, moved, label, enabled=enabled, font_size=max(12, moved.h // 2))
         self._paint_flying(screen, assets)
 
     def _purchase(self, run: RunState, layout: ShopLayout, window: tuple[int, int]) -> None:

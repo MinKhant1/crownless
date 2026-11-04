@@ -14,7 +14,7 @@ from rendering.card_motion import (
     placed_rect,
     step_motion,
 )
-from rendering.hud_renderer import draw_button, draw_relic_glow, get_font, overlay_buy_rect
+from rendering.hud_renderer import draw_button, draw_relic_glow, get_font
 from rendering.shop_layout import ShopLayout
 from rendering.special_piece_renderer import special_pieces
 
@@ -89,10 +89,7 @@ class ShopPieceHand:
     def buy_rect(self, run: RunState, layout: ShopLayout, window: tuple[int, int]) -> pygame.Rect | None:
         if not self.live(run) or self.dragging or not self.selected:
             return None
-        item = self.drawn_rect(run, layout, window)
-        if item is None:
-            return None
-        return overlay_buy_rect(item, self.buy_caption(run)[0], "top")
+        return layout.buys[0].copy() if layout.buys else None
 
     def claims(self, pos: tuple[int, int], run: RunState, layout: ShopLayout, window: tuple[int, int]) -> bool:
         if not self.live(run):
@@ -205,7 +202,7 @@ class ShopPieceHand:
         button = self.buy_rect(run, layout, window)
         if button is not None:
             label, enabled = self.buy_caption(run)
-            draw_button(screen, button.move(dx, 0), label, enabled=enabled, font_size=12)
+            draw_button(screen, button.move(dx, 0), label, enabled=enabled, font_size=max(12, button.h // 2))
 
     def _target(self, rest: pygame.Rect) -> Motion:
         if self.dragging:

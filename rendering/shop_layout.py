@@ -3,15 +3,18 @@ from dataclasses import dataclass
 import pygame
 
 from config.settings import (
-    PRICE_SOURCE,
-    REROLL_SOURCE,
     SHOP_BACKGROUND_SCALE,
     SHOP_BG_SOURCE,
-    SHOP_RELIC_CARD_SCALE,
+    SHOP_CONTINUE_BOUNDS,
+    SHOP_NOTICE_BOUNDS,
+    SHOP_PRICE_TAG,
+    SHOP_REROLL_BOUNDS,
     SHOP_REROLL_LABEL,
     SHOP_SLOT_BOUNDS,
 )
-from rendering.relic_card import CARD_RATIO
+
+OFFER_KEYS = ("piece", "relic", "army_size")
+CHEST_KEYS = ("relic_collection", "piece_collection")
 
 
 @dataclass
@@ -42,20 +45,21 @@ def build_shop_layout(window_w: int, window_h: int, left_edge: int = 0) -> ShopL
     background = pygame.Rect(0, 0, width, height)
     background.center = area.center
     image_w, image_h = SHOP_BG_SOURCE
-    slots = {
-        key: map_shop_rect(bounds, background, image_w, image_h)
-        for key, bounds in SHOP_SLOT_BOUNDS.items()
-    }
-    piece_art = _art_band(slots["piece"])
-    relic_art = _scale_about_center(_fit_card(_art_band(slots["relic"]), CARD_RATIO), SHOP_RELIC_CARD_SCALE)
-    army_art = _art_band(slots["army_size"])
-    cards = [piece_art, relic_art, army_art]
-    tags = [_price_anchor(slots[key]) for key in ("piece", "relic", "army_size", "relic_collection", "piece_collection")]
-    buys = [_buy_anchor(slots[key]) for key in ("piece", "relic", "army_size")]
-    reroll_w = max(96, min(150, int(background.w * 0.13)))
-    reroll_h = max(52, int(round(reroll_w * REROLL_SOURCE[1] / REROLL_SOURCE[0])))
-    reroll = pygame.Rect(0, 0, reroll_w, reroll_h)
-    reroll.center = _image_point(background, 0.34, 0.905)
+
+    def mapped(bounds):
+        return map_shop_rect(bounds, background, image_w, image_h)
+
+    slots = {key: mapped(bounds) for key, bounds in SHOP_SLOT_BOUNDS.items()}
+    # cards are the parchment windows inside each frame, above the name plaque
+    cards = [_art_window(slots[key]) for key in OFFER_KEYS]
+    tags = [_price_tag(slots[key], background.w / image_w) for key in OFFER_KEYS + CHEST_KEYS]
+    buys = [_name_plaque(slots[key]) for key in OFFER_KEYS]
+    reroll = mapped(SHOP_REROLL_BOUNDS)
+    button = mapped(SHOP_CONTINUE_BOUNDS)
+    notice = mapped(SHOP_NOTICE_BOUNDS)
+    screen_bounds = pygame.Rect(offset + 8, 8, max(1, int(window_w) - offset - 16), max(1, int(window_h) - 16))
+    for rect in (reroll, button, notice):
+        _nudge_inside(rect, screen_bounds)
     label_x, label_y, label_w, label_h = SHOP_REROLL_LABEL
     reroll_label = pygame.Rect(
         reroll.x + int(reroll.w * label_x),
@@ -63,23 +67,7 @@ def build_shop_layout(window_w: int, window_h: int, left_edge: int = 0) -> ShopL
         int(reroll.w * label_w),
         int(reroll.h * label_h),
     )
-    gold_w = max(120, min(180, int(background.w * 0.16)))
-    gold_h = max(36, int(round(gold_w * PRICE_SOURCE[1] / PRICE_SOURCE[0])))
-    gold = pygame.Rect(0, 0, gold_w, gold_h)
-    gold.center = _image_point(background, 0.52, 0.905)
-    button = pygame.Rect(0, 0, max(120, int(background.w * 0.13)), max(40, int(background.h * 0.06)))
-    button.center = (int(window_w) // 2, _image_point(background, 0.70, 0.905)[1])
-    notice = pygame.Rect(gold.x, gold.y - 28, gold.w, 24)
-    screen_bounds = pygame.Rect(offset + 8, 8, max(1, int(window_w) - offset - 16), max(1, int(window_h) - 16))
-    _nudge_inside(reroll, screen_bounds)
-    reroll_label.topleft = (
-        reroll.x + int(reroll.w * label_x),
-        reroll.y + int(reroll.h * label_y),
-    )
-    _nudge_inside(gold, screen_bounds)
-    _nudge_inside(button, pygame.Rect(8, 8, max(1, int(window_w) - 16), max(1, int(window_h) - 16)))
-    notice.midbottom = (gold.centerx, gold.y - 4)
-    return ShopLayout(background, cards, tags, buys, reroll, reroll_label, gold, button, notice, slots)
+    return ShopLayout(background, cards, tags, buys, reroll, reroll_label, notice.copy(), button, notice, slots)
 
 
 def map_shop_rect(
@@ -108,41 +96,26 @@ def _nudge_inside(rect: pygame.Rect, bounds: pygame.Rect) -> None:
         rect.top = bounds.top
 
 
-def _image_point(bounds: pygame.Rect, x: float, y: float) -> tuple[int, int]:
-    return bounds.x + int(bounds.w * x), bounds.y + int(bounds.h * y)
+def _art_window(frame: pygame.Rect) -> pygame.Rect:
+    # buying_square.png: parchment from 11% to 89% across and 9% to 71% down, name plaque below
+    return pygame.Rect(
+        frame.x + int(frame.w * 0.12),
+        frame.y + int(frame.h * 0.10),
+        max(1, int(frame.w * 0.76)),
+        max(1, int(frame.h * 0.60)),
+    )
 
 
-def _art_band(slot: pygame.Rect) -> pygame.Rect:
-    label_h = max(40, int(slot.h * 0.30))
-    return pygame.Rect(slot.x + 4, slot.y + 2, max(1, slot.w - 8), max(1, slot.h - label_h))
+def _name_plaque(frame: pygame.Rect) -> pygame.Rect:
+    return pygame.Rect(
+        frame.x + int(frame.w * 0.16),
+        frame.y + int(frame.h * 0.77),
+        max(1, int(frame.w * 0.68)),
+        max(1, int(frame.h * 0.15)),
+    )
 
 
-def _scale_about_center(rect: pygame.Rect, scale: float) -> pygame.Rect:
-    grown = pygame.Rect(rect)
-    grown.w = max(1, int(round(rect.w * scale)))
-    grown.h = max(1, int(round(rect.h * scale)))
-    grown.center = rect.center
-    return grown
-
-
-def _fit_card(area: pygame.Rect, ratio: float) -> pygame.Rect:
-    height = area.h
-    width = max(1, int(round(height * ratio)))
-    if width > area.w:
-        width = area.w
-        height = max(1, int(round(width / ratio)))
-    rect = pygame.Rect(0, 0, width, height)
-    rect.center = area.center
-    return rect
-
-
-def _price_anchor(slot: pygame.Rect) -> pygame.Rect:
-    rect = pygame.Rect(0, 0, max(72, int(slot.w * 0.72)), 26)
-    rect.midbottom = (slot.centerx, slot.bottom - 2)
-    return rect
-
-
-def _buy_anchor(slot: pygame.Rect) -> pygame.Rect:
-    rect = pygame.Rect(0, 0, max(88, int(slot.w * 0.78)), 28)
-    rect.midbottom = (slot.centerx, slot.bottom - 2)
+def _price_tag(item: pygame.Rect, scale: float) -> pygame.Rect:
+    rect = pygame.Rect(0, 0, max(1, round(SHOP_PRICE_TAG[0] * scale)), max(1, round(SHOP_PRICE_TAG[1] * scale)))
+    rect.midbottom = (item.centerx, item.top - max(2, round(8 * scale)))
     return rect

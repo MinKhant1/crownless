@@ -4,13 +4,13 @@ from config.settings import (
     ARMY_UPGRADE_PRICE,
     PIECE_COLLECTION_PRICE,
     RELIC_COLLECTION_PRICE,
-    SHOP_CHEST_SCALE,
 )
 from game.run_state import RunState
 from rendering.asset_manager import AssetManager
 from rendering.card_motion import approach
-from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font, overlay_buy_rect
+from rendering.hud_renderer import _blit_text, draw_button, draw_relic_glow, get_font
 from rendering.shop_layout import ShopLayout
+from rendering.special_piece_renderer import special_pieces
 
 
 OFFERS = (
@@ -50,14 +50,7 @@ class ShopOffers:
                 continue
 
     def art_rect(self, layout: ShopLayout, key: str) -> pygame.Rect:
-        slot = layout.slots[key]
-        label_h = max(42, int(slot.h * 0.30))
-        area = pygame.Rect(slot.x + 8, slot.y + 6, max(1, slot.w - 16), max(1, slot.h - label_h))
-        side = max(1, min(area.w, area.h))
-        rect = pygame.Rect(0, 0, side, side)
-        rect.center = area.center
-        if key in ("relic_collection", "piece_collection"):
-            rect = _scaled(rect, SHOP_CHEST_SCALE)
+        rect = layout.cards[2] if key == "army_size" else layout.slots[key]
         scale = self._scale.get(key, 1.0)
         lift = self._lift.get(key, 0.0)
         drawn = pygame.Rect(0, 0, max(1, int(rect.w * scale)), max(1, int(rect.h * scale)))
@@ -67,8 +60,7 @@ class ShopOffers:
     def buy_rect(self, run: RunState, layout: ShopLayout, key: str) -> pygame.Rect | None:
         if self.selected != key or _sold_out(run, key) or _pending(run, key):
             return None
-        square = self.art_rect(layout, key).inflate(8, 8)
-        return overlay_buy_rect(square, self.buy_caption(run, key)[0], "top")
+        return layout.buys[2].copy()
 
     def buy_caption(self, run: RunState, key: str) -> tuple[str, bool]:
         price = _price(key)
@@ -129,10 +121,11 @@ class ShopOffers:
         return True
 
     def paint(self, screen: pygame.Surface, assets: AssetManager, run: RunState, layout: ShopLayout) -> None:
-        for key, _price, label in OFFERS:
+        for key, _price, _label in OFFERS:
             rect = self.art_rect(layout, key)
             if key == "army_size":
-                _draw_army(screen, rect, label)
+                if not _sold_out(run, key):
+                    _draw_army(screen, assets, rect)
             else:
                 chest = _chest_image(self, assets, key, rect.size)
                 screen.blit(chest, chest.get_rect(center=rect.center))
@@ -144,22 +137,14 @@ class ShopOffers:
             button = self.buy_rect(run, layout, key)
             if button is not None:
                 caption, enabled = self.buy_caption(run, key)
-                draw_button(screen, button, caption, enabled=enabled, font_size=12)
+                draw_button(screen, button, caption, enabled=enabled, font_size=max(12, button.h // 2))
             elif _pending(run, key):
                 _blit_text(screen, "Choose", get_font(max(14, rect.h // 8), bold=True), (245, 220, 170), center=(rect.centerx, rect.bottom + 12))
-            elif _sold_out(run, key):
+            elif _sold_out(run, key) and key != "army_size":
                 shade = pygame.Surface(rect.size, pygame.SRCALPHA)
                 shade.fill((24, 14, 10, 130))
                 screen.blit(shade, rect.topleft)
                 _blit_text(screen, "SOLD OUT", get_font(max(14, rect.h // 8), bold=True), (236, 214, 170), center=rect.center)
-
-
-def _scaled(rect: pygame.Rect, scale: float) -> pygame.Rect:
-    grown = pygame.Rect(rect)
-    grown.w = max(1, int(round(rect.w * scale)))
-    grown.h = max(1, int(round(rect.h * scale)))
-    grown.center = rect.center
-    return grown
 
 
 def _price(key: str) -> int:
@@ -206,13 +191,12 @@ def _purchase(run: RunState, key: str) -> None:
         run.buy_piece_collection()
 
 
-def _draw_army(screen: pygame.Surface, rect: pygame.Rect, label: str) -> None:
-    plate = pygame.Surface(rect.size, pygame.SRCALPHA)
-    pygame.draw.rect(plate, (236, 220, 196, 230), plate.get_rect(), border_radius=8)
-    pygame.draw.rect(plate, (120, 84, 48, 255), plate.get_rect(), width=2, border_radius=8)
-    screen.blit(plate, rect.topleft)
-    _blit_text(screen, "+1", get_font(max(22, rect.h // 3), bold=True), (68, 40, 26), center=(rect.centerx, rect.centery - rect.h // 8))
-    _blit_text(screen, label, get_font(max(13, rect.h // 7), bold=True), (92, 58, 36), center=(rect.centerx, rect.centery + rect.h // 5))
+def _draw_army(screen: pygame.Surface, assets: AssetManager, rect: pygame.Rect) -> None:
+    # three pawns stand for the extra soldier, like the GA1 card; the plaque already says "+1 Army Size"
+    size = max(1, int(min(rect.h * 0.78, rect.w / 2.1)))
+    pawn = special_pieces.image(assets, "white", "pawn", None, size)
+    for shift in (-0.55, 0.55, 0.0):
+        screen.blit(pawn, pawn.get_rect(center=(rect.centerx + int(shift * size), rect.centery)))
 
 
 def _chest_image(offers: ShopOffers, assets: AssetManager | None, key: str, size: tuple[int, int]) -> pygame.Surface:

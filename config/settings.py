@@ -42,21 +42,24 @@ ENEMY_ID_START = 10001
 SHOP_SOURCE = (1024, 1535)
 SHOP_BG_SOURCE = (1535, 1024)
 DEBUG_SHOP_LAYOUT = False
-# Shelf compartments in shop_bg.png pixels (image is 1535×1024).
+# Shop parts in shop_bg.png pixels (image is 1535×1024): three framed offers on the top shelf,
+# the chests in the outer lower compartments, reroll and Continue in the bottom corners.
 SHOP_SLOT_BOUNDS = {
-    "piece": (390, 358, 322, 182),
-    "relic": (815, 358, 328, 182),
-    "army_size": (364, 704, 227, 182),
-    "relic_collection": (643, 704, 233, 182),
-    "piece_collection": (947, 704, 227, 182),
+    "piece": (401, 336, 240, 243),
+    "relic": (667, 336, 240, 243),
+    "army_size": (933, 336, 240, 243),
+    "relic_collection": (403, 660, 185, 185),
+    "piece_collection": (991, 660, 185, 185),
 }
+SHOP_PRICE_TAG = (130, 46)
+SHOP_REROLL_BOUNDS = (200, 850, 196, 110)
+SHOP_CONTINUE_BOUNDS = (1183, 866, 170, 58)
+SHOP_NOTICE_BOUNDS = (627, 875, 320, 40)
 CARD_SOURCE = (484, 479)
 PRICE_SOURCE = (379, 133)
 REROLL_SOURCE = (684, 385)
 SHOP_SIDE_RESERVE = 168
 SHOP_BACKGROUND_SCALE = 1.3
-SHOP_RELIC_CARD_SCALE = 2.0
-SHOP_CHEST_SCALE = 2.0
 SHOP_CARD_WIDTH_FRAC = 0.25
 SHOP_CARD_GAP_FRAC = 0.028
 SHOP_CARD_CENTER_Y = 0.735

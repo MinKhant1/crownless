@@ -250,4 +250,4 @@ class ShopPreviewTests(unittest.TestCase):
         run = RunState.new(seed=21)
         self.assertEqual(battle_label(run), f"BATTLE {run.level}")
         run.phase = "shop"
-        self.assertEqual(battle_label(run), f"BATTLE {run.level + 1}")
+        self.assertEqual(battle_label(run), f"NEXT: BATTLE {run.level + 1}")

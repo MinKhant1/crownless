@@ -27,7 +27,8 @@ def draw_left_sidebar(screen: pygame.Surface, run, layout, assets=None, game=Non
     _draw_wood(screen, rect)
     for section in (battle, personality, resources, army):
         _divider(screen, rect, section.bottom)
-    _blit_text(screen, battle_label(run), battle_font(rect.w), IVORY, center=battle.center)
+    label = battle_label(run)
+    _blit_text(screen, label, battle_font(rect.w, label), IVORY, center=battle.center)
     _draw_heading(screen, "ENEMY PERSONALITY", personality)
     _draw_heading(screen, "RESOURCES", resources)
     _draw_gold(screen, assets, run, resources)

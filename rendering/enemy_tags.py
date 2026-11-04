@@ -55,12 +55,13 @@ def _fitted_font(text: str, size: int, max_width: int, bold: bool = True) -> pyg
 
 def battle_label(run) -> str:
     # the shop sidebar already previews the next battle's enemy
-    level = run.level + 1 if getattr(run, "phase", "") == "shop" else run.level
-    return f"BATTLE {level}"
+    if getattr(run, "phase", "") == "shop":
+        return f"NEXT: BATTLE {run.level + 1}"
+    return f"BATTLE {run.level}"
 
 
-def battle_font(panel_w: int) -> pygame.font.Font:
-    return _fitted_font("BATTLE 12", int(round(30 * hud_scale(panel_w))), max(1, panel_w - 28))
+def battle_font(panel_w: int, label: str = "BATTLE 12") -> pygame.font.Font:
+    return _fitted_font(max(label, "BATTLE 12", key=len), int(round(30 * hud_scale(panel_w))), max(1, panel_w - 28))
 
 
 def heading_font(panel_w: int) -> pygame.font.Font:
@@ -101,7 +102,7 @@ def personality_layout(layout, run, aspects: dict[str, tuple[int, int]], game=No
     panel = layout.left
     battle, personality, _resources, _army = left_sections(layout, run)
     label = battle_label(run)
-    title_w, title_h = battle_font(panel.w).size(label)
+    title_w, title_h = battle_font(panel.w, label).size(label)
     title = pygame.Rect(0, 0, title_w, title_h)
     title.center = battle.center
     del game
