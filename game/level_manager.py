@@ -1,12 +1,13 @@
-from config.settings import ENEMY_FORMATIONS, ENEMY_ID_START, parse_square
+from config.settings import ENEMY_FORMATIONS, ENEMY_ID_START, ENEMY_TRAITS, parse_square
 from game.piece import Piece
 
 
 def spawn_enemies(level: int) -> list[Piece]:
     pieces: list[Piece] = []
+    traits = ENEMY_TRAITS.get(level, {})
     for index, (kind, square) in enumerate(ENEMY_FORMATIONS[level]):
         col, row = parse_square(square)
-        pieces.append(Piece(ENEMY_ID_START + index, kind, "black", col, row))
+        pieces.append(Piece(ENEMY_ID_START + index, kind, "black", col, row, trait=traits.get(square)))
     return pieces
 
 

@@ -9,7 +9,7 @@ def draw_relic_overlays(screen: pygame.Surface, game, layout: Layout, run=None) 
         return
     board = game.board
     if run is not None and run.relics.owns("castle_wall"):
-        for col, row in protected_squares(board):
+        for col, row in protected_squares(board, run.relics.count("castle_wall")):
             rect = layout.square_rect(col, row)
             shield = pygame.Rect(0, 0, max(10, rect.w // 5), max(12, rect.h // 4))
             shield.midtop = (rect.centerx, rect.y + 4)

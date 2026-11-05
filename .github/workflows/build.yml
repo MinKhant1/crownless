@@ -1,0 +1,45 @@
+# Builds Crownless for Windows (.exe) and macOS (.app) on GitHub's machines.
+# Run it from the Actions tab ("Run workflow"), or push a tag like v1.0.0.
+# The finished files are under the run's "Artifacts" section.
+name: Build game
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: Crownless-windows
+            path: dist/Crownless.exe
+          - os: macos-latest
+            artifact: Crownless-mac
+            path: dist/Crownless-mac.zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./build_windows.ps1
+
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: bash build_mac.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}

@@ -60,7 +60,15 @@ class ShopOffers:
     def buy_rect(self, run: RunState, layout: ShopLayout, key: str) -> pygame.Rect | None:
         if self.selected != key or _sold_out(run, key) or _pending(run, key):
             return None
-        return layout.buys[2].copy()
+        plaque = layout.buys[2]
+        if key == "army_size":
+            return plaque.copy()
+        # chests have no plaque of their own: the Buy button sits on the ledge below the chest,
+        # like the relic frame's Buy below its card
+        slot = layout.slots[key]
+        button = pygame.Rect(0, 0, min(plaque.w, slot.w), plaque.h)
+        button.midtop = (slot.centerx, slot.bottom + max(4, plaque.h // 5))
+        return button
 
     def buy_caption(self, run: RunState, key: str) -> tuple[str, bool]:
         price = _price(key)

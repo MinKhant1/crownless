@@ -9,7 +9,9 @@ from rendering.hud_renderer import draw_background
 from scenes.menu_piece import MenuPiece, draw_trait_note
 
 
-MENU_BUTTONS = (("start", "Start"), ("guide", "How to Play"), ("collection", "Collection"), ("exit", "Exit"))
+MENU_BUTTONS = (
+    ("start", "Start"), ("guide", "How to Play"), ("collection", "Collection"), ("options", "Options"), ("exit", "Exit"),
+)
 
 
 class MainMenuScreen:

@@ -85,9 +85,10 @@ class RelicOverlay:
         for relic, rect in zip(owned, rects):
             definition = relic_by_id(relic.relic_id)
             if definition is not None and definition.trigger == "on_activate" and self.activate_rect(rect).collidepoint(pos):
-                effect = run.relics.effect_for(relic.relic_id)
-                if effect is not None and effect.can_activate(run.relics.context)[0]:
+                # stacked copies each have their own use, so act on this card's copy, not the first one owned
+                if run.relics.can_activate(relic.instance_id)[0]:
                     self.picking = True
+                    self.picking_instance = relic.instance_id
                     self.choice_id = None
                 return True
             if rect.collidepoint(pos):
@@ -103,16 +104,21 @@ class RelicOverlay:
                 self.choice_id = piece.id
                 return
         if self.confirm_rect(panel).collidepoint(pos) and self.choice_id is not None:
-            effect = run.relics.effect_for("blood_contract")
-            if effect is None:
+            instance_id = getattr(self, "picking_instance", None)
+            if instance_id is None:
+                owned = run.relics.find("blood_contract")
+                instance_id = None if owned is None else owned.instance_id
+            if instance_id is None:
                 return
-            self.result = effect.activate(run.relics.context, self.choice_id)
+            self.result = run.relics.activate(instance_id, self.choice_id)
             self.picking = False
+            self.picking_instance = None
             self.choice_id = None
 
     def _close(self) -> None:
         self.open = False
         self.picking = False
+        self.picking_instance = None
         self.choice_id = None
         self.result = None
 
@@ -158,7 +164,7 @@ class RelicOverlay:
                 label = "Used this battle"
             _blit_text(screen, label, get_font(14), (236, 214, 170), center=(rect.centerx, rect.bottom + 16))
             return
-        allowed, message = effect.can_activate(run.relics.context)
+        allowed, message = run.relics.can_activate(owned.instance_id)
         button = self.activate_rect(rect)
         draw_button(screen, button, "Activate", enabled=allowed, font_size=16)
         if not allowed and message:

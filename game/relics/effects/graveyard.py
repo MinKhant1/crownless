@@ -1,4 +1,5 @@
 from game.relics.events import BATTLE_START, CAPTURE_RESOLVED, PIECE_REMOVED, visual_trigger
+from game.relics.relic_context import claim
 from game.relics.relic_registry import register_effect
 
 
@@ -26,7 +27,7 @@ class GraveyardEffect:
         payload = event.payload
         if payload.get("captured_piece_color") != "white" or not payload.get("captured_trait"):
             return
-        self._restore(payload.get("captured_piece_type"), payload.get("destination_square"))
+        self._restore(event, payload.get("captured_piece_type"), payload.get("destination_square"))
 
     def _on_removed(self, event) -> None:
         payload = event.payload
@@ -34,12 +35,14 @@ class GraveyardEffect:
             return
         if payload.get("source") == "graveyard":
             return
-        self._restore(payload.get("kind"), payload.get("square"))
+        self._restore(event, payload.get("kind"), payload.get("square"))
 
-    def _restore(self, kind, square) -> None:
+    def _restore(self, event, kind, square) -> None:
         if self._busy or self.owned.state.get("used_this_battle") or self.context is None:
             return
         if not kind or square is None:
+            return
+        if not claim(event, "graveyard"):
             return
         self._busy = True
         self.owned.state["used_this_battle"] = True

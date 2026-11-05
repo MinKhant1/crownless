@@ -15,8 +15,13 @@ from config.settings import (
 from game.run_state import RunState
 from game.scene_manager import SceneManager, slide_duration
 from game.visual_test import VisualTest
+from rendering import audio as audio_module
 from rendering.asset_manager import AssetManager
+from rendering.audio import Audio, settings_path, track_for
+from rendering.battle_feedback import battle_feedback
 from rendering.board_renderer import clear_board_cache
+from rendering.effects import board_effects
+from rendering.ui_sounds import ui_sounds
 from rendering.battle_view import render_battle
 from rendering.hud_renderer import _blit_text, get_font
 from rendering.layout import build_layout, square_at
@@ -43,7 +48,7 @@ from scenes.deployment_scene import DeploymentScene
 from scenes.relic_overlay import RelicOverlay
 from rendering.victory_summary import continue_rect
 from rendering.win_screen import win_screen
-from scenes.result_scene import handle_result_click
+from scenes.result_scene import defeat_buttons, handle_result_click
 from scenes.collection import CollectionScreen
 from scenes.how_to_play import HowToPlayScreen
 from scenes.main_menu import MainMenuScreen
@@ -71,6 +76,9 @@ def main() -> None:
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
     clock = pygame.time.Clock()
     assets = AssetManager(ROOT / "assets")
+    sound = Audio(ROOT / "assets" / "audio", settings_path())
+    sound.start()
+    audio_module.install(sound)
     run = _new_run()
     deployment = DeploymentScene()
     relics = RelicOverlay()
@@ -97,6 +105,7 @@ def main() -> None:
         nonlocal running, screen
         window = screen.get_size()
         for event in pygame.event.get():
+            ui_sounds.on_event(event)
             if event.type == pygame.QUIT:
                 running = False
                 return current_mode, current_run, current_cursor, current_dt
@@ -114,8 +123,19 @@ def main() -> None:
                     wood_swirl.resize()
                 window = screen.get_size()
                 continue
+            if current_mode == "menu" and screen_menu.mode:
+                # the Options panel sits over the main menu and takes every click until it closes
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    screen_menu.mode = ""
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    screen_menu.on_press(build_layout(*window), event.pos)
+                elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    screen_menu.on_release(event.pos, window, build_layout(*window))
+                continue
             if current_mode == "menu":
                 action = front.on_event(event, window)
+                if action == "options":
+                    screen_menu.mode = "options"
                 if action == "start":
                     current_run = _new_run()
                     scene.reset()
@@ -155,10 +175,16 @@ def main() -> None:
             guide.update(current_dt, window)
             guide.draw(screen, assets)
             hand = guide.wants_hand()
+        if current_mode == "menu" and screen_menu.mode:
+            screen_menu.draw(screen)
+            hand = False
+        sound.music(track_for(current_mode, current_run.phase))
+        sound.update(current_dt)
         wanted = pygame.SYSTEM_CURSOR_HAND if hand else pygame.SYSTEM_CURSOR_ARROW
         if current_cursor != wanted:
-            pygame.mouse.set_cursor(wanted)
+            _set_cursor(wanted)
             current_cursor = wanted
+        ui_sounds.end_frame(pygame.mouse.get_pos(), hand, current_dt)
         pygame.display.flip()
         return current_mode, current_run, current_cursor, min(0.05, clock.tick(FPS) / 1000.0)
 
@@ -172,6 +198,8 @@ def main() -> None:
         board_layout = build_layout(*window)
         shop_layout = build_shop_layout(*window, board_layout.left.right + 12)
         relic_bar.bind(run)
+        battle_feedback.bind(run, board_layout, relic_bar)
+        board_effects.update(dt)
         if relics.open:
             relic_bar.close_detail()
         if run.phase == "shop":
@@ -183,6 +211,7 @@ def main() -> None:
         scene.update(dt)
         _advance_enemy(run, scene, enemy_turn, dt, visual_test)
         for event in pygame.event.get():
+            ui_sounds.on_event(event)
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.VIDEORESIZE:
@@ -197,6 +226,7 @@ def main() -> None:
                     relic_bar.clear()
                     preview.clear()
                     wood_swirl.resize()
+                    board_effects.clear()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_F3 and run.phase == "battle" and run.battle is not None:
                 run.battle.game.toggle_debug()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_F4:
@@ -327,6 +357,19 @@ def main() -> None:
                         piece_motion.clear()
                         relic_bar.clear()
                         preview.dismiss()
+                    elif action == "main_menu":
+                        if visual_test.active:
+                            visual_test.close(run)
+                        run = _new_run()
+                        scene.reset()
+                        trait_debug.target_id = None
+                        piece_motion.clear()
+                        relic_bar.clear()
+                        preview.dismiss()
+                        enemy_turn.reset()
+                        board_effects.clear()
+                        front.enter()
+                        mode = "menu"
                     elif action == "readability":
                         special_pieces.clear()
                         figurines.clear()
@@ -413,6 +456,9 @@ def main() -> None:
             relic_bar.update(dt, run, board_layout)
         elif relic_bar.dragging or relic_bar.armed:
             relic_bar.cancel_pointer()
+        battle_feedback.watch(run)
+        sound.music(track_for(mode, run.phase))
+        sound.update(dt)
         if run.phase == "shop":
             shop_piece.update(dt, run, shop_layout, window)
             shop_hand.update(dt, run, shop_layout, window)
@@ -471,6 +517,11 @@ def main() -> None:
                     and continue_rect(window, run).collidepoint(pygame.mouse.get_pos())
                 )
                 or (
+                    run.phase == "defeat"
+                    and scene.result_ready()
+                    and any(rect.collidepoint(pygame.mouse.get_pos()) for rect in defeat_buttons(window, run))
+                )
+                or (
                     run.phase == "complete"
                     and win_screen.buttons_shown()
                     and any(rect.collidepoint(pygame.mouse.get_pos()) for rect in win_screen.buttons(window))
@@ -479,11 +530,21 @@ def main() -> None:
         )
         wanted = pygame.SYSTEM_CURSOR_HAND if hand else pygame.SYSTEM_CURSOR_ARROW
         if cursor != wanted:
-            pygame.mouse.set_cursor(wanted)
+            _set_cursor(wanted)
             cursor = wanted
+        ui_sounds.end_frame(pygame.mouse.get_pos(), hand, dt)
         pygame.display.flip()
         dt = min(0.05, clock.tick(FPS) / 1000.0)
     pygame.quit()
+
+
+def _set_cursor(cursor: int) -> None:
+    # Some systems (remote desktops, some Linux setups, headless runs) cannot create the system hand cursor.
+    # The pointer shape is a nicety; it must never stop the game.
+    try:
+        pygame.mouse.set_cursor(cursor)
+    except pygame.error:
+        pass
 
 
 def _focus_shop(owner: str | None) -> None:

@@ -305,7 +305,7 @@ class OverlayTests(unittest.TestCase):
             "golden": ("Golden Knight", "Earn +2 Gold if this piece survives the battle."),
             "ghost": ("Ghost Bishop", "Slides through your own pieces. Disappears after battle."),
             "wooden": ("Wooden Rook", "A piece that captures this cannot move for 2 turns."),
-            "wanted": ("Wanted Queen", "Enemies make this piece their main target."),
+            "wanted": ("Wanted Queen", "Enemies make this piece their main target. Capture an enemy Wanted piece for +2 Gold."),
             "explosive": ("Explosive Pawn", "A piece that captures this is destroyed too."),
             "magnet": ("Magnet Knight", "Adjacent enemies cannot move backward."),
         }

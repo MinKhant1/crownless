@@ -26,7 +26,7 @@ PIECE_COLLECTION_PRICE = 10
 REROLL_PRICE = 2
 VICTORY_GOLD = 3
 GOLDEN_BONUS = 2
-MAX_LEVEL = 5
+MAX_LEVEL = 30
 VICTORY_BANNER_TIME = 0.35
 VICTORY_REWARD_TIME = 0.25
 SCENE_SLIDE_TIME = 0.78
@@ -178,13 +178,76 @@ SHOP_OPTIONAL_FILES = {
     "crownless_logo": "crownless_logo.png",
 }
 
+def _row(rank: int, *kinds: str) -> tuple[tuple[str, str], ...]:
+    """One rank of a formation, files A-F left to right; '.' is an empty square."""
+    return tuple((kind, f"{FILES[col]}{rank}") for col, kind in enumerate(kinds) if kind != ".")
+
+
+_P, _N, _B, _R, _Q = "pawn", "knight", "bishop", "rook", "queen"
+_PAWN_LINE = _row(5, _P, _P, _P, _P, _P, _P)
+
+# Thirty stages. Every fifth one follows the level-design sheet; the stages between climb towards it.
+# Rank 6 is the enemy's back rank, rank 5 its pawn line; you deploy on ranks 1-2.
+# Every piece starts behind a pawn on its own file. Where the design sheet gives fewer pawns than pieces
+# (stages 5 and 15), the most valuable pieces get the cover first: queen, then rook, then bishop and knight.
+# tests/test_level_design.py checks this for every stage; docs/levels/ has the full sheet.
 ENEMY_FORMATIONS = {
-    1: (("pawn", "A5"), ("pawn", "C5"), ("pawn", "E5"), ("knight", "D6")),
-    2: (("pawn", "A5"), ("pawn", "C5"), ("pawn", "E5"), ("bishop", "B6"), ("knight", "D6")),
-    3: (("pawn", "B5"), ("pawn", "D5"), ("bishop", "C6"), ("knight", "E6"), ("rook", "A6")),
-    4: (("pawn", "A5"), ("pawn", "C5"), ("pawn", "E5"), ("bishop", "B6"), ("knight", "D6"), ("rook", "F6")),
-    5: (("king", "D6"), ("pawn", "C5"), ("pawn", "E5"), ("knight", "B6"), ("bishop", "F6"), ("rook", "A6")),
+    1: _row(6, ".", ".", _N, ".", ".", ".") + _row(5, _P, ".", _P, ".", _P, "."),
+    2: _row(6, _B, ".", _N, ".", ".", ".") + _row(5, _P, ".", _P, ".", _P, "."),
+    3: _row(6, _R, ".", _B, ".", _N, ".") + _row(5, _P, ".", _P, ".", _P, "."),
+    4: _row(6, ".", _B, ".", _N, ".", _R) + _row(5, ".", _P, ".", _P, ".", _P),
+    5: _row(6, ".", _R, _Q, _B, _N, ".") + _row(5, ".", _P, _P, ".", ".", "."),
+    6: _row(6, _R, ".", _N, _B, ".", ".") + _row(5, _P, ".", _P, _P, ".", "."),
+    7: _row(6, ".", _N, ".", _Q, _N, ".") + _row(5, ".", _P, ".", _P, _P, "."),
+    8: _row(6, ".", _N, ".", ".", _B, _R) + _row(5, ".", _P, ".", ".", _P, _P),
+    9: _row(6, ".", _N, _Q, _N, ".", ".") + _row(5, ".", _P, _P, _P, _P, "."),
+    10: _row(6, ".", ".", _N, _N, _N, ".") + _row(5, ".", _P, _P, _P, _P, "."),
+    11: _row(6, ".", _B, _N, _N, _B, ".") + _row(5, ".", _P, _P, _P, _P, "."),
+    12: _row(6, _R, ".", _N, _N, ".", _B) + _row(5, _P, ".", _P, _P, ".", _P),
+    13: _row(6, ".", _B, _N, _Q, _B, ".") + _row(5, ".", _P, _P, _P, _P, "."),
+    14: _row(6, _B, _N, ".", _N, ".", _R) + _row(5, _P, _P, _P, _P, ".", _P),
+    15: _row(6, _B, _N, _B, _N, _B, _N) + _row(5, _P, ".", _P, ".", _P, "."),
+    16: _row(6, ".", _N, _B, _Q, _B, _N) + _row(5, ".", _P, _P, _P, _P, _P),
+    17: _row(6, _R, _N, _B, _N, _N, ".") + _row(5, _P, _P, _P, _P, _P, "."),
+    18: _row(6, _B, _N, _Q, _N, _B, ".") + _row(5, _P, _P, _P, _P, _P, "."),
+    19: _row(6, ".", _N, _B, _B, _N, _R) + _row(5, ".", _P, _P, _P, _P, _P),
+    20: _row(6, _N, _N, _N, ".", _N, _N) + _row(5, _P, _P, _P, ".", _P, _P),
+    21: _row(6, ".", _N, _Q, _B, _N, _R) + _row(5, ".", _P, _P, _P, _P, _P),
+    22: _row(6, ".", _B, _N, _N, _B, _N) + _PAWN_LINE,
+    23: _row(6, _R, _N, _Q, _B, _N, ".") + _PAWN_LINE,
+    24: _row(6, _N, _B, ".", _N, _B, _N) + _PAWN_LINE,
+    25: _row(6, _N, _B, ".", _Q, _B, _N) + _PAWN_LINE,
+    26: _row(6, _N, _B, _Q, ".", _N, _R) + _PAWN_LINE,
+    27: _row(6, _R, _B, _Q, ".", _N, _N) + _PAWN_LINE,
+    28: _row(6, _R, _B, _Q, _Q, _N, ".") + _PAWN_LINE,
+    29: _row(6, _R, _N, _Q, _Q, _B, ".") + _PAWN_LINE,
+    30: _row(6, _R, _N, _Q, _Q, _B, ".") + _PAWN_LINE,
 }
+# Enemy special pieces: stage -> {square: trait}. The trait rules are the same as for your pieces.
+ENEMY_TRAITS = {
+    10: {"D6": "wooden"},
+    11: {"D6": "wooden"},
+    12: {"C6": "wooden"},
+    13: {"C6": "wooden"},
+    14: {"D6": "wooden"},
+    15: {"A6": "wooden", "B6": "wanted"},
+    16: {"B6": "wanted", "E6": "wooden"},
+    17: {"D6": "wanted", "E6": "wooden"},
+    18: {"B6": "wooden"},
+    19: {"B6": "wanted", "D6": "wooden"},
+    20: {"B6": "magnet", "E6": "wooden"},
+    21: {"B6": "magnet", "E6": "wooden"},
+    22: {"C6": "magnet", "F6": "wanted"},
+    23: {"B6": "wooden", "E6": "magnet"},
+    24: {"A6": "magnet", "D6": "wanted", "F6": "magnet"},
+    25: {"A6": "magnet", "F6": "magnet"},
+    26: {"A6": "magnet", "E6": "wooden"},
+    27: {"E6": "magnet", "F6": "wooden", "D5": "wanted"},
+    28: {"E6": "magnet"},
+    29: {"B6": "magnet", "E6": "wooden", "C5": "wanted"},
+    30: {"D6": "explosive", "E6": "wooden", "C5": "wanted"},
+}
+WANTED_BOUNTY = 2  # gold for capturing an enemy Wanted piece, paid when the battle is won
 
 LIGHT_TEXT = (245, 232, 210)
 DARK_TEXT = (68, 40, 26)

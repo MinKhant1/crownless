@@ -28,6 +28,8 @@ class RunState:
         self.relics = RelicManager(self)
         self.relic_display_order: list[str] = []
         self.golden_reward = 0
+        self.bounty_reward = 0
+        self.wanted_captured = 0
         self.shop = ShopManager(self.rng, shop_relic_ids())
         self.deployment = DeploymentManager()
         self.enemies: list[Piece] = []
@@ -273,6 +275,7 @@ class RunState:
         rerolls_before = self.shop_rerolls
         present = white_board_pieces(self)
         self.golden_reward = 0
+        self.bounty_reward = 0
         self.relics.dispatcher.publish(GameEvent(BATTLE_END, {"outcome": "victory"}))
         relic_gold = self.gold - gold_before
         reroll_gain = self.shop_rerolls - rerolls_before
@@ -298,7 +301,7 @@ class RunState:
         if self.level >= MAX_LEVEL:
             self.phase = "complete"
             return
-        self.shop.begin_visit(self.relics.owned_ids())
+        self.shop.begin_visit(self.relics.unavailable_ids())
         self.notice = ""
         self.phase = "shop"
         self.relics.dispatcher.publish(GameEvent(SHOP_ENTER, {"level": self.level}))
@@ -349,7 +352,7 @@ class RunState:
             self.gold = gold
             self.notice = notice or ""
             return notice
-        if self.relics.owns(relic_id):
+        if not self.relics.can_acquire(relic_id):
             self.notice = "Already owned"
             return self.notice
         gold, notice = self.shop.buy_relic(self.gold)
@@ -366,7 +369,7 @@ class RunState:
         return notice
 
     def buy_relic_collection(self) -> str | None:
-        gold, notice = self.shop.buy_relic_collection(self.gold, self.shop.catalog, self.relics.owned_ids())
+        gold, notice = self.shop.buy_relic_collection(self.gold, self.shop.catalog, self.relics.unavailable_ids())
         self.gold = gold
         self.notice = notice or ""
         return notice
@@ -383,7 +386,7 @@ class RunState:
             if relic_id is None:
                 self.notice = "Choose a reward"
                 return self.notice
-            if self.relics.owns(relic_id):
+            if not self.relics.can_acquire(relic_id):
                 self.notice = "Already owned"
                 return self.notice
             self.relics.acquire(relic_id)
@@ -406,11 +409,11 @@ class RunState:
 
     def reroll_shop(self) -> str | None:
         if self.shop_rerolls > 0:
-            self.shop.roll(self.relics.owned_ids())
+            self.shop.roll(self.relics.unavailable_ids())
             self.shop_rerolls -= 1
             self.notice = ""
             return None
-        gold, notice = self.shop.reroll(self.gold, self.relics.owned_ids())
+        gold, notice = self.shop.reroll(self.gold, self.relics.unavailable_ids())
         self.gold = gold
         self.notice = notice or ""
         return notice

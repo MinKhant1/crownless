@@ -25,16 +25,18 @@ class CollectionTests(unittest.TestCase):
         pygame.display.set_mode((64, 64), pygame.HIDDEN)
         cls.assets = AssetManager(ROOT / "assets")
 
-    def test_the_menu_lists_collection_between_how_to_play_and_exit(self):
+    def test_the_menu_lists_collection_and_options_between_how_to_play_and_exit(self):
         menu = MainMenuScreen(random.Random(2))
         keys = [key for key, _label in menu.buttons]
-        self.assertEqual(keys, ["start", "guide", "collection", "exit"])
+        self.assertEqual(keys, ["start", "guide", "collection", "options", "exit"])
         for size in SIZES:
             places = _layout(size)
             self.assertLess(places["guide"].bottom, places["collection"].top)
-            self.assertLess(places["collection"].bottom, places["exit"].top)
+            self.assertLess(places["collection"].bottom, places["options"].top)
+            self.assertLess(places["options"].bottom, places["exit"].top)
             self.assertLessEqual(places["exit"].bottom, size[1])
             self.assertEqual(self._click(menu, places["collection"].center, size), "collection")
+            self.assertEqual(self._click(menu, places["options"].center, size), "options")
 
     def test_every_shop_relic_has_a_readable_card_that_scrolls_into_view(self):
         ids = list(shop_relic_ids())

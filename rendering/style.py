@@ -463,6 +463,10 @@ def draw_plaque_button(
     font_size: int = 20,
 ) -> None:
     """A wooden-plaque button. The label is Cinzel, engraved into the wood."""
+    if state != "disabled":
+        from rendering.ui_sounds import ui_sounds
+
+        ui_sounds.register(screen, rect, label)
     drawn = rect.move(0, 2) if state == "pressed" else rect
     if state != "disabled":
         drop_shadow(screen, rect, offset=4 if state != "pressed" else 2, spread=6, alpha=120, radius=6)

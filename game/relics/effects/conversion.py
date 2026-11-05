@@ -1,4 +1,5 @@
 from game.relics.events import BATTLE_START, CAPTURE_RESOLVED, visual_trigger
+from game.relics.relic_context import claim
 from game.relics.relic_registry import register_effect
 
 
@@ -27,6 +28,8 @@ class ConversionEffect:
         if payload.get("capturing_color") != "white" or payload.get("capturing_kind") != "bishop":
             return
         if payload.get("captured_piece_color") != "black":
+            return
+        if not claim(event, "conversion"):
             return
         self.owned.state["used_this_battle"] = True
         if self.context is None:

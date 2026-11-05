@@ -1,5 +1,6 @@
 from game.board import in_bounds
 from game.relics.events import CAPTURE_RESOLVED, visual_trigger
+from game.relics.relic_context import copy_index
 from game.relics.relic_registry import register_effect
 
 
@@ -26,11 +27,18 @@ class SquireEffect:
         if payload.get("captured_piece_color") != "black":
             return
         col, row = payload["destination_square"]
-        behind = (col, row - 1)
-        if not in_bounds(*behind):
+        # the first Squire fills the square directly behind the knight; each extra copy adds a pawn
+        # on the next free square behind it, diagonally left then right
+        if copy_index(event, "squire") == 0:
+            candidates = [(col, row - 1)]
+        else:
+            candidates = [(col - 1, row - 1), (col + 1, row - 1)]
+        for square in candidates:
+            if not in_bounds(*square):
+                continue
+            spawned = self.context.spawn_ally("pawn", square[0], square[1], None)
+            if spawned is None:
+                continue
+            self.context.flash(square[0], square[1], (220, 196, 120))
+            visual_trigger(self.context.dispatcher, self.owned.instance_id, "Squire")
             return
-        spawned = self.context.spawn_ally("pawn", behind[0], behind[1], None)
-        if spawned is None:
-            return
-        self.context.flash(behind[0], behind[1], (220, 196, 120))
-        visual_trigger(self.context.dispatcher, self.owned.instance_id, "Squire")

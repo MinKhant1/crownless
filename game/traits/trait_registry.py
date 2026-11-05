@@ -10,7 +10,7 @@ class TraitDef:
 
 TRAITS: tuple[TraitDef, ...] = (
     TraitDef("golden", "Golden", "Earn +2 Gold if this piece survives the battle."),
-    TraitDef("wanted", "Wanted", "Enemies make this piece their main target."),
+    TraitDef("wanted", "Wanted", "Enemies make this piece their main target. Capture an enemy Wanted piece for +2 Gold."),
     TraitDef("explosive", "Explosive", "A piece that captures this is destroyed too."),
     TraitDef("ghost", "Ghost", "Slides through your own pieces. Disappears after battle."),
     TraitDef("wooden", "Wooden", "A piece that captures this cannot move for 2 turns."),

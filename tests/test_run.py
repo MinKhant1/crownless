@@ -3,6 +3,7 @@ import unittest
 
 from config.settings import (
     ENEMY_FORMATIONS,
+    MAX_LEVEL,
     SHOP_PIECE_TRAITS,
     STARTER_KINDS,
     STARTING_GOLD,
@@ -49,10 +50,10 @@ class RunTests(unittest.TestCase):
     def test_enemy_formations_for_the_first_five_levels(self):
         self.assertEqual(formation_counts(1), {"pawn": 3, "knight": 1})
         self.assertEqual(formation_counts(2), {"pawn": 3, "bishop": 1, "knight": 1})
-        self.assertEqual(formation_counts(3), {"pawn": 2, "bishop": 1, "knight": 1, "rook": 1})
+        self.assertEqual(formation_counts(3), {"pawn": 3, "bishop": 1, "knight": 1, "rook": 1})
         self.assertEqual(formation_counts(4), {"pawn": 3, "bishop": 1, "knight": 1, "rook": 1})
-        self.assertEqual(formation_counts(5), {"king": 1, "pawn": 2, "knight": 1, "bishop": 1, "rook": 1})
-        for level in range(1, 6):
+        self.assertEqual(formation_counts(5), {"queen": 1, "pawn": 2, "knight": 1, "bishop": 1, "rook": 1})
+        for level in range(1, MAX_LEVEL + 1):
             squares = []
             for _kind, square in ENEMY_FORMATIONS[level]:
                 col, row = parse_square(square)
@@ -294,7 +295,7 @@ class RunTests(unittest.TestCase):
         self.assertEqual(run.level, 2)
         self.assertEqual(run.phase, "preview")
         self.assertEqual(len(run.enemies), 5)
-        run.level = 5
+        run.level = MAX_LEVEL
         run.phase = "victory"
         run.continue_from_victory()
         self.assertEqual(run.phase, "complete")

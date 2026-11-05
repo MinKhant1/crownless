@@ -5,6 +5,7 @@ import pygame
 
 import main
 from ai.enemy_ai import EnemyTurn
+from config.settings import MAX_LEVEL
 from game.run_state import RunState
 from game.scene_manager import SceneManager
 from game.visual_test import VisualTest
@@ -105,18 +106,18 @@ class FullRunTests(unittest.TestCase):
         self.fail(f"result never showed in phase {run.phase}")
 
     def test_a_run_with_every_shop_bought_out_reaches_the_end(self):
-        for seed in (3, 21):
+        for seed in (3,):  # one full run renders all thirty stages; a second seed doubled the suite time
             with self.subTest(seed=seed):
                 run = RunState.new(seed)
                 self.scene.reset()
-                for level in range(1, 6):
+                for level in range(1, MAX_LEVEL + 1):
                     self.settle(run)
                     self.assertEqual(run.level, level)
                     self.end_battle(run, won=True)
                     self.assertEqual(run.phase, "victory")
                     main._continue_victory(self.scene, run, self.relic_bar)
                     self.settle(run)
-                    if level == 5:
+                    if level == MAX_LEVEL:
                         break
                     self.assertEqual(run.phase, "shop")
                     run.gold = 60

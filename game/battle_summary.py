@@ -110,6 +110,7 @@ def _rows(run, relic_gold: int, reroll_gain: int) -> list[RewardRow]:
     if interest > 0:
         rows.append(RewardRow("Interest", interest, "bonus"))
     remaining = _claim(rows, remaining, _golden_row(run))
+    remaining = _claim(rows, remaining, _bounty_row(run))
     remaining = _claim(rows, remaining, _relic_gold_row(run, "flawless_victory"))
     remaining = _claim(rows, remaining, _relic_gold_row(run, "gold_charm"))
     for extra in extra_reward_rows(run):
@@ -139,12 +140,19 @@ def _golden_row(run) -> RewardRow | None:
     return RewardRow("Golden Piece", run.golden_reward, "bonus", source="Trait")
 
 
+def _bounty_row(run) -> RewardRow | None:
+    bounty = getattr(run, "bounty_reward", 0)
+    if bounty <= 0:
+        return None
+    return RewardRow("Wanted Bounty", bounty, "bonus", source="Trait")
+
+
 def _relic_gold_row(run, relic_id: str) -> RewardRow | None:
     if relic_id == "flawless_victory":
         owned = run.relics.find(relic_id)
         if owned is None or owned.state.get("lost_piece"):
             return None
-    amount = _relic_parameter(run, relic_id, "gold")
+    amount = _relic_parameter(run, relic_id, "gold") * run.relics.count(relic_id)
     return _relic_row(run, relic_id, amount, "")
 
 
@@ -153,6 +161,9 @@ def _relic_row(run, relic_id: str, amount: int, source: str, counts_toward_gold:
         return None
     definition = relic_by_id(relic_id)
     name = relic_id.replace("_", " ").title() if definition is None else definition.name
+    copies = run.relics.count(relic_id)
+    if copies > 1:
+        name = f"{name} x{copies}"
     return RewardRow(f"Relic: {name}", amount, "relic", source=source, counts_toward_gold=counts_toward_gold)
 
 
