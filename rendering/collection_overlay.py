@@ -1,7 +1,7 @@
 import pygame
 
 from game.relics.relic_data import relic_by_id
-from game.traits import trait_name
+from game.traits import trait_by_id, trait_name
 from game.run_state import RunState
 from game.transitions.easing import ease_out_cubic
 from rendering.asset_manager import AssetManager
@@ -92,6 +92,11 @@ class CollectionOverlay:
             if definition is not None:
                 anchor = rects[self.hover]
                 draw_relic_tooltip(screen, definition, anchor)
+        elif run.shop.collection_open == "piece" and 0 <= self.hover < len(choices):
+            traits = run.shop.piece_choice_traits or ()
+            trait = traits[self.hover] if self.hover < len(traits) else None
+            anchor = rects[self.hover].move(0, -12 if run.shop.collection_pick == self.hover else 0)
+            _draw_piece_tooltip(screen, assets, choices[self.hover], trait, anchor)
 
     def _choices(self, run: RunState) -> list[str]:
         if run.shop.collection_open == "relic":
@@ -159,6 +164,36 @@ class CollectionOverlay:
         screen.blit(image, drawn.topleft)
         if self.hover == index and run.shop.collection_open == "relic":
             draw_relic_glow(screen, drawn)
+
+
+def _draw_piece_tooltip(
+    screen: pygame.Surface,
+    assets: AssetManager,
+    kind: str,
+    trait_id: str | None,
+    anchor: pygame.Rect,
+) -> pygame.Rect:
+    trait = trait_by_id(trait_id)
+    title = f"{trait.name} {kind.capitalize()}" if trait else kind.capitalize()
+    body = trait.description if trait else "This piece has no special trait."
+    width = min(280, screen.get_width() - 16)
+    title_font = style.fitted_title(title, 17, width - 24)
+    body_font = style.body_font(15)
+    lines = style.wrap(body_font, body, width - 24)
+    line_height = body_font.get_height() + 3
+    height = 24 + title_font.get_height() + len(lines) * line_height
+    panel = pygame.Rect(0, 0, width, height)
+    panel.midtop = (anchor.centerx, anchor.bottom + 10)
+    if panel.bottom > screen.get_height() - 8:
+        panel.bottom = anchor.top - 10
+    panel.clamp_ip(screen.get_rect().inflate(-16, -16))
+    style.tooltip_panel(screen, assets, panel)
+    style.text(screen, title, title_font, style.INK, topleft=(panel.x + 12, panel.y + 10))
+    y = panel.y + 14 + title_font.get_height()
+    for line in lines:
+        style.text(screen, line, body_font, style.INK_SOFT, topleft=(panel.x + 12, y))
+        y += line_height
+    return panel
 
 
 def _piece_card(

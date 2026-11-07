@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 import pygame
 
@@ -120,7 +121,7 @@ class SummaryLayoutTests(unittest.TestCase):
             self.assertLess(abs(frames.center.centerx - size[0] // 2), 2)
             self.assertEqual(frames.fallen.size, (0, 0))
 
-    def test_fallen_images_sit_in_the_middle(self):
+    def test_fallen_images_do_not_move_the_victory_panel(self):
         summary = BattleSummary(
             battle_number=1,
             gold_before=3,
@@ -133,10 +134,13 @@ class SummaryLayoutTests(unittest.TestCase):
         )
         for size in ((1440, 900), (960, 720)):
             frames = summary_frames(size, summary)
+            normal = summary_frames(size, replace(summary, fallen=()))
+            self.assertEqual(frames.center, normal.center)
+            self.assertEqual(frames.button, normal.button)
+            self.assertEqual(frames.row_height, normal.row_height)
             window = pygame.Rect(0, 0, *size)
             self.assertTrue(window.contains(frames.center))
             self.assertTrue(window.contains(frames.fallen))
             self.assertFalse(frames.center.colliderect(frames.fallen))
             self.assertLess(abs(frames.fallen.centerx - size[0] // 2), 2)
-            self.assertLess(abs(frames.fallen.centery - size[1] // 2), size[1] * 0.12)
             self.assertLess(frames.fallen.bottom, frames.center.top)

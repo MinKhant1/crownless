@@ -136,9 +136,32 @@ class RunTests(unittest.TestCase):
         self.assertFalse(shop.relic_enabled)
         self.assertEqual(len(army.pieces), 1)
         self.assertEqual(army.capacity, 6)
-        gold, notice = shop.reroll(gold)
+        gold, notice = shop.reroll(3)
         self.assertIsNone(notice)
+        self.assertEqual(gold, 0)
         self.assertEqual(shop.piece_kind, "rook")
+
+    def test_reroll_prices_grow_and_reset_each_visit(self):
+        shop = ShopManager(random.Random(4))
+        for price in (2, 3, 5, 7, 11, 16, 23, 35):
+            self.assertEqual(shop.reroll_price, price)
+            serial = shop.offer_serial
+            self.assertEqual(shop.reroll(price - 1), (price - 1, "Not enough gold"))
+            self.assertEqual(shop.offer_serial, serial)
+            self.assertEqual(shop.reroll_price, price)
+            self.assertEqual(shop.reroll(price), (0, None))
+        shop.begin_visit()
+        self.assertEqual(shop.reroll_count, 0)
+        self.assertEqual(shop.reroll_price, 2)
+
+    def test_free_rerolls_preserve_paid_price(self):
+        run = RunState.new(seed=4)
+        run.shop_rerolls = 1
+        run.gold = 0
+        self.assertIsNone(run.reroll_shop())
+        self.assertEqual(run.gold, 0)
+        self.assertEqual(run.shop_rerolls, 0)
+        self.assertEqual(run.shop.reroll_price, 2)
 
     def test_shop_pieces_draw_each_special_trait_equally(self):
         shop = ShopManager(random.Random(4))

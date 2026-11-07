@@ -25,6 +25,7 @@ class ShopManager:
         self.relic_sold = False
         self.relic_enabled = False
         self.offer_serial = 0
+        self.reroll_count = 0
         self.relic_collection_sold = False
         self.piece_collection_sold = False
         self.relic_collection_claimed = False
@@ -54,6 +55,7 @@ class ShopManager:
             self.relic_enabled = False
 
     def begin_visit(self, owned_ids: set[str] | None = None) -> None:
+        self.reroll_count = 0
         self.relic_collection_sold = False
         self.piece_collection_sold = False
         self.relic_collection_claimed = False
@@ -100,11 +102,19 @@ class ShopManager:
         self.army_sold = True
         return gold - ARMY_UPGRADE_PRICE, None
 
+    @property
+    def reroll_price(self) -> int:
+        # Exact integer ceiling of REROLL_PRICE * (3 / 2) ** reroll_count.
+        denominator = 2 ** self.reroll_count
+        return (REROLL_PRICE * 3 ** self.reroll_count + denominator - 1) // denominator
+
     def reroll(self, gold: int, owned_ids: set[str] | None = None) -> tuple[int, str | None]:
-        if gold < REROLL_PRICE:
+        price = self.reroll_price
+        if gold < price:
             return gold, "Not enough gold"
         self.roll(owned_ids)
-        return gold - REROLL_PRICE, None
+        self.reroll_count += 1
+        return gold - price, None
 
     def buy_relic_collection(self, gold: int, catalog: tuple[str, ...], owned_ids: set[str] | None = None) -> tuple[int, str | None]:
         if self.relic_collection_sold or self.relic_choices:

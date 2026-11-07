@@ -9,7 +9,6 @@ from config.settings import (
     PIECE_PRICE,
     RELIC_COLLECTION_PRICE,
     RELIC_PRICE,
-    REROLL_PRICE,
     SHOP_REROLL_TILT,
     SCENE_SLIDE_TIME,
     SHOP_CARD_STAGGER,
@@ -60,7 +59,7 @@ def draw_shop(
         shop_hand.paint(screen, assets, run, layout, offer_dx, offer_alpha)
     dx, alpha = _card_motion(entrance, 3)
     if alpha > 0:
-        _draw_reroll(screen, assets, layout, dx, alpha)
+        _draw_reroll(screen, assets, layout, dx, alpha, 0 if run.shop_rerolls > 0 else run.shop.reroll_price)
     draw_button(screen, layout.continue_button, "Continue", font_size=max(16, layout.continue_button.h // 2))
     if run.notice:
         color = TURN_CHECK if run.notice == "Not enough gold" else (236, 214, 170)
@@ -166,7 +165,7 @@ def _card_motion(entrance: float, index: int) -> tuple[int, int]:
     return int((1.0 - eased) * 64), int(255 * eased)
 
 
-def _draw_reroll(screen: pygame.Surface, assets: AssetManager, layout: ShopLayout, dx: int, alpha: int) -> None:
+def _draw_reroll(screen: pygame.Surface, assets: AssetManager, layout: ShopLayout, dx: int, alpha: int, price: int) -> None:
     reroll = layout.reroll.move(dx, 0)
     label = layout.reroll_label.move(dx, 0)
     target: pygame.Surface = screen
@@ -181,7 +180,7 @@ def _draw_reroll(screen: pygame.Surface, assets: AssetManager, layout: ShopLayou
         origin = bounds.topleft
     target.blit(assets.scaled("reroll_board", (layout.reroll.w, layout.reroll.h)), reroll.topleft)
     face = pygame.Surface((label.w, label.h * 2), pygame.SRCALPHA)
-    _coin_amount(face, assets, face.get_rect(), REROLL_PRICE, DARK_TEXT, height=int(label.h * 1.9))
+    _coin_amount(face, assets, face.get_rect(), price, DARK_TEXT, height=int(label.h * 1.9))
     face = pygame.transform.rotozoom(face, SHOP_REROLL_TILT, 1.0)
     target.blit(face, face.get_rect(center=label.center))
     if plate is not None:

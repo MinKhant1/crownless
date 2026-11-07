@@ -65,20 +65,17 @@ def summary_frames(window: tuple[int, int], summary: BattleSummary) -> SummaryFr
     piece_band = 0 if piece_count == 0 else min(120, max(72, height // 8))
     gap = 18 if piece_count else 0
     floor = 12
-    room = max(1, height - margin - floor - gap - piece_band)
+    room = max(1, height - margin - floor)
     center_h = min(room, chrome + rows * row_h)
     if center_h > chrome:
         row_h = max(22, min(row_h, (center_h - chrome) // rows))
     block_h = min(chrome + rows * row_h, room)
+    panel_top = max(margin, (height - block_h) // 2)
     if piece_count:
-        piece_top = (height - piece_band) // 2
-        panel_top = piece_top + piece_band + gap
-        if panel_top + block_h > height - floor:
-            panel_top = height - floor - block_h
-            piece_top = max(8, panel_top - gap - piece_band)
+        piece_band = min(piece_band, max(0, panel_top - gap - 8))
+        piece_top = panel_top - gap - piece_band
         fallen = pygame.Rect(margin, piece_top, max(1, width - margin * 2), piece_band)
     else:
-        panel_top = max(margin, (height - block_h) // 2)
         fallen = pygame.Rect(0, 0, 0, 0)
     center = pygame.Rect(max(8, (width - center_w) // 2), panel_top, center_w, block_h)
     button = pygame.Rect(0, 0, min(280, center.w - 48), 50)

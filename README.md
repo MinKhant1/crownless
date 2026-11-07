@@ -100,7 +100,7 @@ The shop offers three cards:
 - A relic for 7 gold. It is chosen from the relics you do not already own.
 - +1 army size for 12 gold. This raises how many non-king pieces you may deploy.
 
-The reroll board costs 2 gold. It draws a new piece, a new relic, and restocks the piece and army-size cards. Gold you already spent stays spent. Continue leaves the shop without buying.
+The reroll board costs ceil(2 × 1.5^(n−1)) gold for paid reroll n in each shop visit: 2, 3, 5, 7, 11, 16, and so on. Free rerolls do not increase the price. It draws a new piece, a new relic, and restocks the piece and army-size cards. Gold you already spent stays spent. Continue leaves the shop without buying.
 
 ## Relics
 
