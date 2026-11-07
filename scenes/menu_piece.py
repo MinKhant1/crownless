@@ -14,6 +14,7 @@ from rendering.card_motion import (
     step_motion,
 )
 from rendering.hud_renderer import _blit_text, draw_relic_glow, get_font
+from rendering.overlay_renderer import draw_trait_badge, draw_trait_ring
 from rendering.piece_visual_effects import draw_contact_shadow, figurines, present, shadow_center
 
 
@@ -91,14 +92,18 @@ class MenuPiece:
         image = figurines.image(assets, self.piece(), max(1, rest.w))
         lift = 0.85 if self.dragging else 0.4 if self.hovered else 0.0
         draw_contact_shadow(screen, shadow_center(rect.center, rest.w), rest.w, lift)
+        if self.trait == "wanted":
+            draw_trait_ring(screen, shadow_center(rect.center, rect.w), rect.w, self.trait)
         face = present(image, motion.scale, motion.angle)
         screen.blit(face, face.get_rect(center=rect.center))
-        if self.hovered or self.dragging:
+        if self.trait == "wanted":
+            draw_trait_badge(screen, rect, self.trait)
+        if self.hovered and not self.dragging and not self._armed:
             draw_relic_glow(screen, rect)
         return rect
 
 
-def draw_trait_note(screen: pygame.Surface, piece: MenuPiece, anchor: pygame.Rect) -> None:
+def draw_trait_note(screen: pygame.Surface, piece: MenuPiece, anchor: pygame.Rect, side: str = "bottom") -> None:
     trait = trait_by_id(piece.trait)
     if trait is None or not piece.hovered or piece.dragging:
         return
@@ -111,7 +116,10 @@ def draw_trait_note(screen: pygame.Surface, piece: MenuPiece, anchor: pygame.Rec
     lines = wrap_text(trait.description, body, width - 28)
     height = 16 + title_h + 8 + len(lines) * (body_h + 2) + 10
     plate = pygame.Rect(0, 0, width, height)
-    plate.midtop = (anchor.centerx, anchor.bottom + 8)
+    if side == "left":
+        plate.midright = (anchor.left - 12, anchor.centery)
+    else:
+        plate.midtop = (anchor.centerx, anchor.bottom + 8)
     bounds = screen.get_rect().inflate(-12, -12)
     plate.clamp_ip(bounds)
     pygame.draw.rect(screen, (236, 220, 196), plate, border_radius=10)

@@ -24,9 +24,32 @@ class MainMenuScreen:
         self._held = False
         self._pointer = (0, 0)
         self.age = 0.0
+        self._flight = self._new_flight()
+
+    def _new_flight(self) -> tuple[tuple[float, float], ...]:
+        side = self.rng.choice((0.0, 1.0))
+        return ((side, 0.0), (side, 0.45), (0.5, 0.45))
+
+    def _king_rest(self, window: tuple[int, int]) -> pygame.Rect:
+        home = _layout(window)["king"]
+        if self.age >= 3.2:
+            return home
+        t = min(1.0, self.age / 3.2)
+        t = t * t * (3.0 - 2.0 * t)
+        inset = home.w / 2 + 12
+        points = [(inset + x * (window[0] - 2 * inset),
+                   inset + y * (window[1] - 2 * inset)) for x, y in self._flight]
+        points.append(home.center)
+        u = 1.0 - t
+        home.center = tuple(round(u ** 3 * points[0][axis] + 3 * u * u * t * points[1][axis]
+                                  + 3 * u * t * t * points[2][axis] + t ** 3 * points[3][axis])
+                            for axis in (0, 1))
+        return home
 
     def enter(self) -> None:
         self.age = 0.0
+        self._flight = self._new_flight()
+        self.king._motion = None
         self.king.trait = self.rng.choice(TRAIT_IDS)
         self.king.on_release()
         self.king.hovered = False
@@ -34,7 +57,7 @@ class MainMenuScreen:
 
     def update(self, dt: float, window: tuple[int, int]) -> None:
         self.age += max(0.0, dt)
-        home = _layout(window)["king"]
+        home = self._king_rest(window)
         self.king.update(dt, home, window)
         for key, _label in self.buttons:
             rect = _layout(window)[key]
@@ -44,6 +67,7 @@ class MainMenuScreen:
 
     def on_event(self, event: pygame.event.Event, window: tuple[int, int]) -> str | None:
         places = _layout(window)
+        places["king"] = self._king_rest(window)
         if event.type == pygame.MOUSEMOTION:
             self._pointer = event.pos
             self.king.on_motion(event.pos, places["king"], window, self._held)
@@ -51,13 +75,13 @@ class MainMenuScreen:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self._pointer = event.pos
             self._held = True
-            if self.king.on_press(event.pos, places["king"], window):
-                self._pressed = ""
-                return None
             for key, _label in self.buttons:
                 if places[key].collidepoint(event.pos):
                     self._pressed = key
                     return None
+            if self.king.on_press(event.pos, places["king"], window):
+                self._pressed = ""
+                return None
             self._pressed = ""
             return None
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -80,10 +104,11 @@ class MainMenuScreen:
         window = screen.get_size()
         places = _layout(window)
         _draw_logo(screen, assets, places["logo"])
-        self.king.paint(screen, assets, places["king"], window)
-        draw_trait_note(screen, self.king, self.king.drawn(places["king"], window))
+        places["king"] = self._king_rest(window)
         for key, label in self.buttons:
             _draw_menu_button(screen, places[key], label, self._hot[key], self._down[key])
+        self.king.paint(screen, assets, places["king"], window)
+        draw_trait_note(screen, self.king, self.king.drawn(places["king"], window), side="left")
 
 
 def _layout(window: tuple[int, int]) -> dict[str, pygame.Rect]:

@@ -102,7 +102,7 @@ class RunTests(unittest.TestCase):
         self.assertEqual(len(run.relics.owned), 0)
 
     def test_sold_out_and_reroll(self):
-        shop = ShopManager(ScriptedRandom(["knight", "golden", "queen", "wooden", "rook", "ghost"]))
+        shop = ShopManager(ScriptedRandom(["knight", "golden", "queen", "wooden", "rook", "magnet"]))
         from game.army_manager import ArmyManager
 
         army = ArmyManager()

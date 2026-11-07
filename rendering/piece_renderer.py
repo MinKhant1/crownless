@@ -16,7 +16,7 @@ from game.game import Game
 from game.piece import Piece
 from rendering.asset_manager import AssetManager
 from rendering.layout import Layout
-from rendering.overlay_renderer import draw_crosshair, draw_explosive_marks, draw_lock, draw_trait_badge, draw_trait_ring
+from rendering.overlay_renderer import draw_explosive_marks, draw_lock, draw_trait_badge, draw_trait_ring
 from rendering.piece_animation_controller import piece_motion
 from rendering.piece_visual_effects import draw_contact_shadow, figurines, present, shadow_center
 
@@ -54,8 +54,6 @@ def draw_trait_sprite(
     if piece.trait:
         draw_trait_ring(screen, ground, rect.w, piece.trait)
     held = rect.move(0, -int(lift))
-    if piece.trait == "wanted":
-        draw_crosshair(screen, held)
     blit_piece(screen, assets, piece, box, (rect.centerx, rect.centery - lift), 1.0, 0.0)
     if piece.trait == "explosive":
         draw_explosive_marks(screen, held)
@@ -140,8 +138,6 @@ def _draw_board_piece(
     lift, scale, tilt, _ratio = piece_motion.offset(piece.id)
     lifted = pygame.Rect(0, 0, layout.square, layout.square)
     lifted.center = (int(center[0]), int(center[1] - lift))
-    if piece.trait == "wanted":
-        draw_crosshair(screen, lifted)
     blit_piece(screen, assets, piece, box, (center[0], center[1] - lift), scale, tilt)
     if piece.trait == "explosive":
         draw_explosive_marks(screen, lifted)

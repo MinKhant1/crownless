@@ -197,7 +197,7 @@ class ShopPieceHand:
             face = face.copy()
             face.set_alpha(alpha)
         _rotated(screen, face, rect.center, angle)
-        if (self.hovered or self.selected) and not self.dragging:
+        if (self.hovered or self.selected) and not self.dragging and not self.armed:
             draw_relic_glow(screen, rect)
         button = self.buy_rect(run, layout, window)
         if button is not None:

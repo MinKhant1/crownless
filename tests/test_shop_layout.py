@@ -15,16 +15,21 @@ def shop_at(size):
 
 
 class ShopLayoutTests(unittest.TestCase):
-    def test_continue_is_bottom_right_and_reroll_bottom_left(self):
+    def test_continue_is_bottom_center_and_reroll_left_of_center_chest(self):
         for size in SIZES:
             with self.subTest(size=size):
                 left, layout = shop_at(size)
                 width, height = size
                 button, reroll = layout.continue_button, layout.reroll
-                self.assertGreater(button.centerx, (left + width) // 2)
+                self.assertAlmostEqual(button.centerx, layout.background.centerx, delta=2)
                 self.assertLess(reroll.centerx, (left + width) // 2)
+                chest = layout.slots["relic_collection"]
+                self.assertAlmostEqual(chest.centerx, layout.background.centerx, delta=2)
+                self.assertLess(reroll.right, chest.left)
+                self.assertGreater(reroll.centery, chest.centery)
+                self.assertLess(reroll.centery, chest.bottom)
+                self.assertGreater(button.centery, height * 0.8)
                 for rect in (button, reroll):
-                    self.assertGreater(rect.centery, height * 0.8)
                     self.assertTrue(rect.top >= 0 and rect.bottom <= height and rect.left >= left and rect.right <= width)
 
     def test_three_offer_cards_share_one_row_with_a_price_above_each(self):

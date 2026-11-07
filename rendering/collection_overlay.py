@@ -157,9 +157,7 @@ class CollectionOverlay:
             pygame.draw.rect(image, (232, 196, 96), image.get_rect().inflate(-6, -6), width=3, border_radius=10)
         image.set_alpha(int(255 * progress))
         screen.blit(image, drawn.topleft)
-        if run.shop.collection_open != "relic" and run.shop.collection_pick == index:
-            pygame.draw.rect(screen, (232, 196, 96), piece_rect.inflate(10, 10), width=3, border_radius=8)
-        if self.hover == index:
+        if self.hover == index and run.shop.collection_open == "relic":
             draw_relic_glow(screen, drawn)
 
 

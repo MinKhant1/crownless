@@ -12,7 +12,7 @@ class SpecialPieceRenderer:
 
     def image(self, assets, color: str, kind: str, trait: str | None, box: int) -> pygame.Surface:
         fitted = assets.fitted(f"{color}_{kind}", box, box)
-        if trait not in ("golden", "ghost", "wooden", "explosive", "magnet"):
+        if trait not in ("golden", "wanted", "ghost", "wooden", "explosive", "magnet"):
             return fitted
         strong = trait_style.strong
         key = (color, kind, trait, fitted.get_width(), fitted.get_height(), strong)
@@ -25,6 +25,12 @@ class SpecialPieceRenderer:
 
 
 def _paint(source: pygame.Surface, trait: str, strong: bool) -> pygame.Surface:
+    if trait == "wanted":
+        from rendering.overlay_renderer import draw_crosshair
+
+        body = _outline(source, (214, 36, 42) if strong else (150, 32, 36), 3 if strong else 2)
+        draw_crosshair(body, body.get_rect())
+        return body
     if trait == "golden":
         tint = (236, 164, 28) if strong else (222, 176, 72)
         edge = (255, 214, 72) if strong else (196, 146, 48)

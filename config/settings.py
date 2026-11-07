@@ -34,7 +34,7 @@ SHOP_CARD_STAGGER = 0.08
 LEVEL_PREVIEW_TIME = 0.65
 BATTLE_START_TIME = 0.40
 SHOP_PIECE_KINDS = ("pawn", "knight", "bishop", "rook", "queen")
-SHOP_PIECE_TRAITS = ("golden", "wanted", "explosive", "ghost", "wooden", "magnet")
+SHOP_PIECE_TRAITS = ("golden", "wanted", "explosive", "wooden", "magnet")
 STARTER_KINDS = ("pawn", "knight", "bishop", "rook", "queen", "king")
 DEPLOY_ROWS = (1, 2)
 ENEMY_ID_START = 10001
@@ -43,17 +43,17 @@ SHOP_SOURCE = (1024, 1535)
 SHOP_BG_SOURCE = (1535, 1024)
 DEBUG_SHOP_LAYOUT = False
 # Shop parts in shop_bg.png pixels (image is 1535×1024): three framed offers on the top shelf,
-# the chests in the outer lower compartments, reroll and Continue in the bottom corners.
+# the relic chest in the lower middle, piece chest on the right, and reroll on the left.
 SHOP_SLOT_BOUNDS = {
     "piece": (401, 336, 240, 243),
     "relic": (667, 336, 240, 243),
     "army_size": (933, 336, 240, 243),
-    "relic_collection": (403, 660, 185, 185),
+    "relic_collection": (675, 660, 185, 185),
     "piece_collection": (991, 660, 185, 185),
 }
 SHOP_PRICE_TAG = (130, 46)
-SHOP_REROLL_BOUNDS = (200, 850, 196, 110)
-SHOP_CONTINUE_BOUNDS = (1183, 866, 170, 58)
+SHOP_REROLL_BOUNDS = (397, 720, 196, 110)
+SHOP_CONTINUE_BOUNDS = (683, 866, 170, 58)
 SHOP_NOTICE_BOUNDS = (627, 875, 320, 40)
 CARD_SOURCE = (484, 479)
 PRICE_SOURCE = (379, 133)
