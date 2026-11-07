@@ -1,6 +1,7 @@
 import math
 
 import pygame
+from rendering import style
 
 from config.settings import (
     BOARD_SELECT_GLOW,
@@ -16,7 +17,7 @@ from game.game import Game
 from game.piece import Piece
 from rendering.asset_manager import AssetManager
 from rendering.layout import Layout
-from rendering.overlay_renderer import draw_explosive_marks, draw_lock, draw_trait_badge, draw_trait_ring
+from rendering.overlay_renderer import draw_crosshair, draw_explosive_marks, draw_lock, draw_trait_badge, draw_trait_ring
 from rendering.piece_animation_controller import piece_motion
 from rendering.piece_visual_effects import draw_contact_shadow, figurines, present, shadow_center
 
@@ -121,6 +122,10 @@ def draw_pieces(
         if piece.id == skip_id or piece.col is None or piece.row is None:
             continue
         status = game.statuses.get(piece.id)
+        if piece.id in game.board.vengeance_marks:
+            square = layout.square_rect(piece.col, piece.row)
+            draw_crosshair(screen, square)
+            style.text(screen, "+3 Gold", style.body_font(13), style.GOLD_BRIGHT, midtop=(square.centerx, square.top + 2))
         if status is not None and status.status_id == "immobilized" and status.remaining_owner_turns > 0:
             draw_lock(screen, layout.square_rect(piece.col, piece.row))
     if piece_motion.debug:

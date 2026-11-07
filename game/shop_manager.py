@@ -43,7 +43,9 @@ class ShopManager:
         self.piece_trait = self.rng.choice(SHOP_PIECE_TRAITS)
         self.piece_sold = False
         self.army_sold = False
-        owned = owned_ids or set()
+        owned = set(owned_ids or ())
+        if not self.relic_collection_claimed:
+            owned.update(self.relic_choices or ())
         choices = [relic_id for relic_id in self.catalog if relic_id not in owned]
         if choices:
             self.relic_id = self.rng.choice(choices)

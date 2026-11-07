@@ -9,6 +9,50 @@ from rendering.shop_offers import ShopOffers
 
 
 class CollectionShopTests(unittest.TestCase):
+    def test_owned_relics_and_pending_chest_choices_never_appear_in_rerolls(self):
+        run = RunState.new(seed=8)
+        run.gold = 100
+        for relic_id in run.shop.catalog[:8]:
+            run.relics.acquire(relic_id)
+        run.shop.begin_visit(run.relics.unavailable_ids())
+        self.assertIsNone(run.buy_relic_collection())
+        choices = set(run.shop.relic_choices)
+        self.assertFalse(choices & run.relics.owned_ids())
+        self.assertNotIn(run.shop.relic_id, choices)
+        run.shop.collection_open = None
+        run.shop_rerolls = 20
+        for _ in range(20):
+            self.assertIsNone(run.reroll_shop())
+            self.assertNotIn(run.shop.relic_id, choices | run.relics.owned_ids())
+
+    def test_stale_duplicate_choice_does_not_consume_chest(self):
+        run = RunState.new(seed=8)
+        run.gold = 100
+        self.assertIsNone(run.buy_relic_collection())
+        run.shop.collection_pick = 0
+        run.relics.acquire(run.shop.relic_choices[0])
+        self.assertEqual(run.confirm_collection(), "Already owned")
+        self.assertFalse(run.shop.relic_collection_claimed)
+        self.assertEqual(run.shop.collection_open, "relic")
+        run.shop.collection_pick = 1
+        self.assertIsNone(run.confirm_collection())
+        self.assertTrue(run.shop.relic_collection_claimed)
+
+    def test_relic_chest_sells_out_without_charging_when_catalog_is_owned(self):
+        run = RunState.new(seed=8)
+        for relic_id in run.shop.catalog:
+            run.relics.acquire(relic_id)
+        run.gold = 100
+        self.assertEqual(run.buy_relic_collection(), "Sold out")
+        self.assertEqual(run.gold, 100)
+
+    def test_starter_choices_exclude_owned_relics(self):
+        run = RunState.new(seed=8)
+        for relic_id in run.shop.catalog[:8]:
+            run.relics.acquire(relic_id)
+        run.offer_starter_relics()
+        self.assertFalse(set(run.shop.relic_choices) & run.relics.owned_ids())
+
     def test_relic_chest_keeps_three_choices_through_reroll_and_close(self):
         run = RunState.new(seed=8)
         run.gold = 40

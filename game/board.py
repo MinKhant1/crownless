@@ -23,9 +23,12 @@ class Board:
         pieces: list[Piece] | None = None,
         capture_kings: bool = False,
         enforce_check: bool = True,
+        marching_orders: bool = False,
     ) -> None:
         self.capture_kings = capture_kings
         self.enforce_check = enforce_check
+        self.marching_orders = marching_orders
+        self.vengeance_marks: set[int] = set()
         self.pieces: list[Piece] = []
         self.capture_log: list[CaptureRecord] = []
         self._grid: dict[tuple[int, int], Piece] = {}
@@ -89,11 +92,14 @@ class Board:
         return captured
 
     def copy(self) -> "Board":
-        return Board(
+        clone = Board(
             [piece.copy() for piece in self.pieces],
             capture_kings=self.capture_kings,
             enforce_check=self.enforce_check,
+            marching_orders=self.marching_orders,
         )
+        clone.vengeance_marks = self.vengeance_marks.copy()
+        return clone
 
 
 def create_initial_board() -> Board:

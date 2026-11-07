@@ -426,6 +426,8 @@ class RelicBar:
         if slot.owned.instance_id == self.selected_card_id:
             pygame.draw.rect(image, (214, 170, 90), image.get_rect().inflate(-2, -2), width=2, border_radius=8)
         _blit_rotated(screen, image, slot.drawn.center, slot.angle)
+        if slot.owned.relic_id == "veterans_banner":
+            _draw_veteran_progress(screen, slot.owned, slot.drawn)
         if slot.owned.instance_id == self.hovered_card_id and self.detail_id is None and not dragged:
             draw_relic_glow(screen, slot.drawn)
         if slot.pulse > 0:
@@ -485,6 +487,8 @@ class RelicBar:
         pygame.draw.rect(screen, (214, 170, 90), panel, width=3, border_radius=14)
         draw_button(screen, close, "Close", font_size=14)
         self.cards.draw(screen, assets, definition, card, owned=True)
+        if owned.relic_id == "veterans_banner":
+            _draw_veteran_progress(screen, owned, card)
         if definition.trigger == "on_activate":
             allowed, message = run.relics.can_activate(owned.instance_id)
             if allowed:
@@ -497,6 +501,18 @@ class RelicBar:
                 _blit_text(screen, message, get_font(16), (214, 140, 110), center=(panel.centerx, card.bottom + 28))
         if self.notice:
             _blit_text(screen, self.notice, get_font(15), (214, 120, 96), center=(panel.centerx, panel.bottom - 18))
+
+
+def _draw_veteran_progress(screen: pygame.Surface, owned: OwnedRelic, card: pygame.Rect) -> None:
+    progress = min(5, owned.state.get("progress", 0))
+    plate = pygame.Rect(0, 0, 92, 30)
+    plate.midtop = (card.centerx, card.bottom + 2)
+    plate.clamp_ip(screen.get_rect().inflate(-8, -8))
+    pygame.draw.rect(screen, (42, 28, 20), plate, border_radius=5)
+    style.text(screen, f"{progress}/5", style.body_font(13), style.GOLD_BRIGHT, midtop=(plate.centerx, plate.top + 1))
+    for i in range(5):
+        color = style.GOLD_BRIGHT if i < progress else (104, 86, 64)
+        pygame.draw.circle(screen, color, (plate.centerx + (i - 2) * 13, plate.bottom - 7), 4, 0 if i < progress else 1)
 
 
 def card_state(run: RunState, owned: OwnedRelic) -> str:

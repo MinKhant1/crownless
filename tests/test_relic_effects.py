@@ -19,7 +19,7 @@ def _kind(run: RunState, kind: str) -> Piece:
 
 class RelicEffectTests(unittest.TestCase):
     def test_catalog_maps_card_art_and_keeps_gold_charm_out_of_the_shop(self):
-        self.assertEqual(len(shop_relic_ids()), 13)
+        self.assertEqual(len(shop_relic_ids()), 18)
         self.assertNotIn("gold_charm", shop_relic_ids())
         self.assertEqual(front_key(relic_by_id("collectors_crown")), "relic_front_collector_crown")
 
@@ -194,9 +194,9 @@ class RelicEffectTests(unittest.TestCase):
         before = run.army.capacity
         self.assertIsNotNone(run.relics.acquire("banner"))
         self.assertEqual(run.army.capacity, before + 1)
-        self.assertIsNotNone(run.relics.acquire("banner"))
-        self.assertEqual(run.army.capacity, before + 2)
-        self.assertEqual(run.relics.count("banner"), 2)
+        self.assertIsNone(run.relics.acquire("banner"))
+        self.assertEqual(run.army.capacity, before + 1)
+        self.assertEqual(run.relics.count("banner"), 1)
 
     def test_graveyard_restores_the_first_special_piece_as_normal(self):
         run = RunState.new(seed=18)

@@ -14,10 +14,44 @@ class RelicDef:
     parameters: dict = field(default_factory=dict)
     rarity: str = "common"
     in_shop: bool = True
-    stackable: bool = True  # can be owned more than once; each copy adds its effect again
+    stackable: bool = False  # each relic can be owned only once per run
 
 
 RELICS: tuple[RelicDef, ...] = (
+    RelicDef(
+        id="war_tax", name="War Tax", art="war_tax.png",
+        flavor_text="The living pay for the wars of kings.",
+        description="At battle's end, gain 1 Gold for every 2 surviving allied pieces.",
+        effect_id="war_tax", trigger="on_battle_end",
+    ),
+    RelicDef(
+        id="spoils_of_war", name="Spoils of War", art="spoils_of_war.png",
+        flavor_text="Even royalty leaves riches behind.",
+        description="Gain 2 Gold whenever you capture an enemy Rook or Queen.",
+        effect_id="spoils_of_war", trigger="on_capture",
+    ),
+    RelicDef(
+        id="veterans_banner", name="Veteran's Banner", art="veteran_banner.png",
+        flavor_text="Five victories. Not a single soul lost.",
+        description="Win 5 battles without losing any allied pieces to permanently gain +1 Army Size. Activates once per run.",
+        effect_id="veterans_banner", trigger="on_battle_end", stackable=False,
+    ),
+    RelicDef(
+        id="golden_vengeance", name="Golden Vengeance", art="golden_vengence.png",
+        flavor_text="Every drop of golden blood demands repayment.",
+        description="When an allied Golden Piece is captured, mark its killer. Capture the marked enemy to gain 3 Gold.",
+        effect_id="golden_vengeance", trigger="on_capture",
+    ),
+    RelicDef(
+        id="marching_orders",
+        name="Marching Orders",
+        art="marching_order.png",
+        flavor_text="Even the smallest soldier can conquer great distances.",
+        description="Pawns can move forward up to 2 squares instead of 1, provided their path is clear.",
+        effect_id="marching_orders",
+        trigger="passive",
+        stackable=False,
+    ),
     RelicDef(
         id="blood_contract",
         name="Blood Contract",

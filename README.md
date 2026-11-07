@@ -112,6 +112,10 @@ Special Piece traits live on the piece, not on the relic. The rules are in the t
 
 Recruitment, when you own it, adds the captured enemy to your side on the square your piece just left. A recruited piece can stay in your army after the battle even if you are over the deployment limit. The next deployment still uses that limit. Ghosts do not stay.
 
+War Tax pays 1 Gold per 2 surviving allied pieces at battle's end, rounded down (including the King and temporary allies). Spoils of War pays 2 Gold immediately for each enemy Rook or Queen captured. Golden Vengeance marks enemies that capture allied Golden pieces; capturing a marked enemy immediately pays 3 Gold. Multiple enemies can carry bounties, and marks expire at battle's end. Capture rewards appear in the victory summary as already earned during battle.
+
+Veteran's Banner tracks five total flawless victories while owned; losses do not reset its progress. Each flawless victory fills one of five symbols beneath its card, alongside a progress count. At 5/5 it permanently adds +1 Army Size, once per run.
+
 ### Where the pieces live
 
 - `game/relics/relic_data.py` holds names, flavor, descriptions, triggers, and shop availability.
@@ -144,9 +148,9 @@ Owned relics stand on a carved shelf above the chessboard during deployment and 
 
 Up to five cards are visible. Further relics stay owned and keep working; the mouse wheel over the row, or the arrows at the ends, scrolls them into view.
 
-### Stacking relics
+### Unique relics
 
-The shop and the relic chest offer relics you already own, and each copy adds its effect again (each copy has its own card). Gold and reroll relics pay once per copy, Banner adds +1 army size per copy, and Blood Contract can be used once per copy. "First" relics take turns: two Recruitments recruit the first two captures, two First Bloods give two bonus moves, two Graveyards return the first two special pieces lost, and two Conversions convert the first two bishop captures. Each extra Squire adds a pawn diagonally behind the knight, each extra Crown's Blessing blesses another piece beside the King, each extra Royal Promotion promotes a different pawn, and each extra Castle Wall shields one more piece down the rook's file. Chain Fuse is the only relic that does not stack, so the shop stops offering it once you own it.
+Each relic can be owned only once per run, including spent relics such as Blood Contract. Shop offers, rerolls, starter rewards, and relic chest choices exclude owned relics. Rerolls also exclude choices reserved in an unclaimed relic chest. If every available relic is owned or reserved, the shop's relic slot is sold out. Duplicate purchases are rejected without charging gold, and an invalid chest selection leaves the reward unclaimed so another choice can be selected.
 
 Hovering a card lifts it and shows its name, saying, and effect. Left-click opens a larger card. Right-click, or Close, dismisses it. Blood Contract shows an Activate button there when it can still be used, and the click is passed to the relic manager. Passive relics have no Activate button.
 

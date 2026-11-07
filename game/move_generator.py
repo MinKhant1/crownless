@@ -158,7 +158,7 @@ def _pawn_moves(board: Board, piece: Piece) -> list[Move]:
         moves.append(_move(piece, piece.col, forward_row))
         jump_row = piece.row + (2 * direction)
         if (
-            not piece.has_moved
+            (not piece.has_moved or (piece.color == "white" and board.marching_orders))
             and in_bounds(piece.col, jump_row)
             and board.piece_at(piece.col, jump_row) is None
         ):

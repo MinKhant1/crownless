@@ -207,7 +207,7 @@ def relic_card_size(content: pygame.Rect) -> tuple[int, int]:
 
 
 def relic_rects(content: pygame.Rect, scroll: int) -> list[tuple[str, pygame.Rect]]:
-    """All 13 shop relics in a grid, as wide as the page allows, scrolled by `scroll` pixels."""
+    """All shop relics in a grid, as wide as the page allows, scrolled by `scroll` pixels."""
     ids = [relic.id for relic in RELICS if relic.in_shop]
     card_w, card_h = relic_card_size(content)
     columns = max(1, (content.w - 24 + CARD_GAP) // (card_w + CARD_GAP))

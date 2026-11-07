@@ -43,11 +43,11 @@ class RelicManager:
         definition = relic_by_id(relic_id)
         if definition is None:
             return False
-        return definition.stackable or not self.owns(relic_id)
+        return not self.owns(relic_id)
 
     def unavailable_ids(self) -> set[str]:
-        """Relics the shop should not offer again: owned ones that do not stack."""
-        return {relic_id for relic_id in self.owned_ids() if not self.can_acquire(relic_id)}
+        """Owned relics must never be offered again."""
+        return self.owned_ids()
 
     def find(self, relic_id: str) -> OwnedRelic | None:
         for item in self.owned:

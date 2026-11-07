@@ -6,6 +6,11 @@ from rendering.asset_manager import AssetManager
 
 # None keeps the visible illustration. A tuple is (x, y, width, height) from 0 to 1.
 ART_CROPS: dict[str, tuple[float, float, float, float] | None] = {
+    "war_tax": None,
+    "spoils_of_war": None,
+    "veterans_banner": None,
+    "golden_vengeance": None,
+    "marching_orders": None,
     "banner": None,
     "blood_contract": None,
     "castle_wall": None,

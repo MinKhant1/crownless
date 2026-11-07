@@ -40,7 +40,7 @@ class CollectionTests(unittest.TestCase):
 
     def test_every_shop_relic_has_a_readable_card_that_scrolls_into_view(self):
         ids = list(shop_relic_ids())
-        self.assertEqual(len(ids), 13)
+        self.assertEqual(len(ids), 18)
         for size in SIZES:
             content = _frame(size)["content"]
             card_w, card_h = relic_card_size(content)

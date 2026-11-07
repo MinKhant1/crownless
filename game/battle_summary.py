@@ -68,9 +68,17 @@ def interest_amount(_run) -> int:
     return 0
 
 
-def extra_reward_rows(_run) -> list[RewardRow]:
+def extra_reward_rows(run) -> list[RewardRow]:
     """Rows for gold already paid during battle end and not covered by the built-in relic rows."""
-    return []
+    rows = []
+    for relic_id in ("war_tax", "spoils_of_war", "golden_vengeance"):
+        amount = sum(owned.state.get("battle_gold", 0) for owned in run.relics.owned if owned.relic_id == relic_id)
+        row = _relic_row(run, relic_id, amount, "" if relic_id == "war_tax" else "During Battle", counts_toward_gold=relic_id == "war_tax")
+        if row is not None:
+            if relic_id != "war_tax":
+                row = RewardRow(f"{row.label} (during battle)", row.amount, row.style, row.source, False)
+            rows.append(row)
+    return rows
 
 
 def white_board_pieces(run) -> list[tuple[int, str, str | None]]:

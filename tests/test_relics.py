@@ -24,14 +24,13 @@ class RelicTests(unittest.TestCase):
         self.assertEqual(owned.relic_id, "recruitment")
         self.assertEqual(owned.instance_id, "relic_001")
         self.assertEqual(owned.acquisition_order, 1)
-        second = run.relics.acquire("recruitment")  # relics stack: a second copy is its own instance
-        self.assertIsNotNone(second)
-        self.assertEqual(second.instance_id, "relic_002")
-        self.assertEqual(run.relics.count("recruitment"), 2)
+        second = run.relics.acquire("recruitment")
+        self.assertIsNone(second)
+        self.assertEqual(run.relics.count("recruitment"), 1)
         self.assertIsNotNone(run.relics.acquire("chain_fuse"))
-        self.assertIsNone(run.relics.acquire("chain_fuse"))  # the one relic that does not stack
-        self.assertEqual(len(run.relics.owned), 3)
-        self.assertEqual(run.relics.unavailable_ids(), {"chain_fuse"})
+        self.assertIsNone(run.relics.acquire("chain_fuse"))
+        self.assertEqual(len(run.relics.owned), 2)
+        self.assertEqual(run.relics.unavailable_ids(), {"recruitment", "chain_fuse"})
 
     def test_capture_effect_registers_once(self):
         run = RunState.new(seed=2)

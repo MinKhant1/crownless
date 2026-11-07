@@ -69,7 +69,7 @@ class RunState:
 
     def offer_starter_relics(self) -> None:
         # rulebook: before Battle 1 the player picks 1 of 3 random relics
-        pool = list(self.shop.catalog)
+        pool = [relic_id for relic_id in self.shop.catalog if self.relics.can_acquire(relic_id)]
         self.shop.relic_choices = random.Random(f"{self.seed}:starter").sample(pool, min(3, len(pool)))
         self.shop.relic_collection_claimed = False
         self.shop.collection_open = "relic"
@@ -382,6 +382,11 @@ class RunState:
 
     def confirm_collection(self) -> str | None:
         if self.shop.collection_open == "relic":
+            choices = self.shop.relic_choices or ()
+            pick = self.shop.collection_pick
+            if pick is not None and 0 <= pick < len(choices) and not self.relics.can_acquire(choices[pick]):
+                self.notice = "Already owned"
+                return self.notice
             relic_id = self.shop.take_relic_choice()
             if relic_id is None:
                 self.notice = "Choose a reward"
