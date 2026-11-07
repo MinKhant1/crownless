@@ -22,14 +22,16 @@ class RoyalPromotionEffect:
         board = self.context.board
         if board is None:
             return
+        promoted = event.payload.setdefault("_promoted", set())  # each copy promotes a different pawn
         pawns = [
             piece
             for piece in board.pieces
-            if piece.color == "white" and piece.kind == "pawn" and piece.trait != "ghost"
+            if piece.color == "white" and piece.kind == "pawn" and piece.trait != "ghost" and piece.id not in promoted
         ]
         if not pawns:
             return
         pawn = self.context.rng.choice(pawns)
+        promoted.add(pawn.id)
         traits = self.definition.parameters.get("traits") or ("golden", "wanted", "explosive", "wooden")
         trait_id = self.context.rng.choice(tuple(traits))
         if not self.context.run.traits.assign_trait(pawn.id, trait_id, overwrite=True):

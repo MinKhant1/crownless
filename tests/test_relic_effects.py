@@ -189,13 +189,14 @@ class RelicEffectTests(unittest.TestCase):
         lost.finish_victory()
         self.assertEqual(lost.gold, before + VICTORY_GOLD)
 
-    def test_banner_raises_capacity_once(self):
+    def test_each_banner_raises_capacity_once(self):
         run = RunState.new(seed=17)
         before = run.army.capacity
         self.assertIsNotNone(run.relics.acquire("banner"))
         self.assertEqual(run.army.capacity, before + 1)
-        self.assertIsNone(run.relics.acquire("banner"))
-        self.assertEqual(run.army.capacity, before + 1)
+        self.assertIsNotNone(run.relics.acquire("banner"))
+        self.assertEqual(run.army.capacity, before + 2)
+        self.assertEqual(run.relics.count("banner"), 2)
 
     def test_graveyard_restores_the_first_special_piece_as_normal(self):
         run = RunState.new(seed=18)

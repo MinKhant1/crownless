@@ -506,11 +506,9 @@ def card_state(run: RunState, owned: OwnedRelic) -> str:
     if definition.trigger == "on_activate":
         if owned.state.get("spent"):
             return "used"
-        effect = run.relics.effect_for(definition.id)
-        if effect is not None and hasattr(effect, "can_activate"):
-            allowed, _message = effect.can_activate(run.relics.context)
-            if not allowed:
-                return "disabled"
+        allowed, _message = run.relics.can_activate(owned.instance_id)  # this card's own copy
+        if not allowed:
+            return "disabled"
         return "active"
     if owned.state.get("used_this_battle"):
         return "used"

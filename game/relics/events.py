@@ -13,6 +13,7 @@ SHOP_ENTER = "shop_enter"
 RELIC_ACQUIRED = "relic_acquired"
 RELIC_ACTIVATED = "relic_activated"
 RELIC_VISUAL_TRIGGER = "relic_visual_trigger"
+RELIC_FLASH = "relic_flash"
 
 
 def visual_trigger(dispatcher, instance_id: str, message: str = "") -> None:

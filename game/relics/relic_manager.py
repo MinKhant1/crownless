@@ -36,6 +36,19 @@ class RelicManager:
     def owns(self, relic_id: str) -> bool:
         return relic_id in self.owned_ids()
 
+    def count(self, relic_id: str) -> int:
+        return sum(1 for item in self.owned if item.relic_id == relic_id)
+
+    def can_acquire(self, relic_id: str) -> bool:
+        definition = relic_by_id(relic_id)
+        if definition is None:
+            return False
+        return definition.stackable or not self.owns(relic_id)
+
+    def unavailable_ids(self) -> set[str]:
+        """Relics the shop should not offer again: owned ones that do not stack."""
+        return {relic_id for relic_id in self.owned_ids() if not self.can_acquire(relic_id)}
+
     def find(self, relic_id: str) -> OwnedRelic | None:
         for item in self.owned:
             if item.relic_id == relic_id:
@@ -61,7 +74,7 @@ class RelicManager:
         return self._effects.get(owned.instance_id)
 
     def acquire(self, relic_id: str) -> OwnedRelic | None:
-        if self.owns(relic_id):
+        if not self.can_acquire(relic_id):
             return None
         definition = relic_by_id(relic_id)
         if definition is None:

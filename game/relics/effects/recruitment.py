@@ -1,4 +1,5 @@
 from game.relics.events import BATTLE_START, CAPTURE_RESOLVED, visual_trigger
+from game.relics.relic_context import claim
 from game.relics.relic_registry import register_effect
 
 
@@ -26,6 +27,8 @@ class RecruitmentEffect:
         payload = event.payload
         if payload.get("capturing_color") != "white" or payload.get("captured_piece_color") != "black":
             return
+        if not claim(event, "recruitment"):
+            return  # another Recruitment already took this capture; this copy waits for the next
         self.owned.state["used_this_battle"] = True
         origin = payload["origin_square"]
         spawned = self.context.spawn_ally(payload["captured_piece_type"], origin[0], origin[1], None)

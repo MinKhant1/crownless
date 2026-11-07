@@ -21,6 +21,7 @@ dist/
 *.egg-info/
 *.egg
 *.spec
+!crownless.spec
 
 # Testing and coverage
 .pytest_cache/

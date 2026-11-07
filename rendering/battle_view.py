@@ -3,6 +3,7 @@ import pygame
 from game.game import Game
 from rendering.asset_manager import AssetManager
 from rendering.board_renderer import draw_board
+from rendering.effects import board_effects
 from rendering.army_panel import ArmyPanel
 from rendering.battle_columns import draw_left_sidebar
 from rendering.hud_renderer import draw_background, draw_crown, draw_debug, draw_labels, draw_turn
@@ -18,9 +19,11 @@ def render_battle(screen: pygame.Surface, assets: AssetManager, game: Game, layo
         relic_bar.draw_cards(screen, assets, run, layout)
     draw_board(screen, assets, layout)
     draw_labels(screen, layout)
+    board_effects.draw_auras(screen, game, layout)
     draw_pieces(screen, assets, game, layout)
     if run is not None and run.phase == "battle":
         draw_relic_overlays(screen, game, layout, run)
+    board_effects.draw(screen)
     draw_crown(screen, assets, layout)
     show_turn = run is None or run.phase == "battle" or run.visual_pieces is not None
     if show_turn:

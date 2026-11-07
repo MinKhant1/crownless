@@ -1,4 +1,5 @@
 from game.relics.events import BATTLE_START, CAPTURE_RESOLVED, visual_trigger
+from game.relics.relic_context import claim
 from game.relics.relic_registry import register_effect
 
 
@@ -29,6 +30,8 @@ class FirstBloodEffect:
         game = self.context.game
         if game is None:
             return
+        if not claim(event, "first_blood"):
+            return  # a second First Blood waits for the next capture: another bonus move
         self.owned.state["used_this_battle"] = True
         game.hold_turn = True
         game.bonus_piece_id = payload.get("capturing_piece_id")

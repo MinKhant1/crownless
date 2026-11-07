@@ -1,6 +1,6 @@
 import pygame
 
-from config.settings import LIGHT_TEXT, VICTORY_GOLD
+from config.settings import LIGHT_TEXT, MAX_LEVEL, VICTORY_GOLD
 from game.level_manager import describe_counts
 from game.relics.relic_data import relic_by_id
 from game.run_state import RunState
@@ -26,8 +26,19 @@ def outcome_button(window: tuple[int, int], run: RunState) -> pygame.Rect | None
     if run.phase == "victory":
         return continue_rect(window, run)
     if run.phase == "defeat":
-        return _banner_button(window, run, run.phase)
+        return defeat_buttons(window, run)[0]
     return None
+
+
+def defeat_buttons(window: tuple[int, int], run: RunState) -> tuple[pygame.Rect, pygame.Rect]:
+    """Restart Run and Main Menu, side by side at the bottom of the Game Over banner."""
+    centre = _banner_button(window, run, "defeat")
+    gap = 16
+    restart = pygame.Rect(0, 0, 200, centre.h)
+    menu = pygame.Rect(0, 0, 200, centre.h)
+    restart.midright = (centre.centerx - gap // 2, centre.centery)
+    menu.midleft = (centre.centerx + gap // 2, centre.centery)
+    return restart, menu
 
 
 def handle_result_click(run: RunState, pos: tuple[int, int], window: tuple[int, int]) -> str | None:
@@ -36,6 +47,13 @@ def handle_result_click(run: RunState, pos: tuple[int, int], window: tuple[int, 
             return None
         new_run, menu = win_screen.buttons(window)
         if new_run.collidepoint(pos):
+            return "restart"
+        if menu.collidepoint(pos):
+            return "menu"
+        return None
+    if run.phase == "defeat":
+        restart, menu = defeat_buttons(window, run)
+        if restart.collidepoint(pos):
             return "restart"
         if menu.collidepoint(pos):
             return "menu"
@@ -61,11 +79,11 @@ def draw_result(screen: pygame.Surface, assets: AssetManager, run: RunState, bac
     pygame.draw.rect(screen, (214, 170, 90), panel, width=3, border_radius=16)
     if run.phase == "complete":
         title = "CROWNLESS — RUN COMPLETE"
-        lines = ["Level 5 is clear.", f"Gold  {run.gold}", describe_counts(_army_counts(run))]
+        lines = [f"Level {MAX_LEVEL} is clear.", f"Gold  {run.gold}", describe_counts(_army_counts(run))]
         label = "Restart Run"
     elif run.phase == "defeat":
         title = "GAME OVER"
-        lines = ["Your King was lost.", "The run ends here."]
+        lines = ["Your King was lost.", fell_at(run)]
         label = "Restart Run"
     else:
         title = f"LEVEL {run.level} COMPLETE"
@@ -101,6 +119,7 @@ def draw_outcome_banner(
     style.ornament_rule(slide, (panel.w // 2, 78), panel.w - 120, style.GOLD_DIM)
     if kind == "defeat":
         style.text(slide, "Your King was lost.", style.body_font(21, italic=True), style.IVORY_SOFT, center=(panel.w // 2, 106))
+        style.text(slide, fell_at(run), style.title_font(20, bold=True), style.GOLD_BRIGHT, center=(panel.w // 2, 138))
     elif reward > 0.02:
         y = 104
         for line in _reward_lines(run):
@@ -110,8 +129,17 @@ def draw_outcome_banner(
     style.drop_shadow(screen, panel, offset=10, spread=18, alpha=int(150 * amount))
     screen.blit(slide, panel.topleft)
     if show_button and enter >= 0.99:
-        label = "Restart Run" if kind == "defeat" else "Continue"
-        draw_button(screen, _banner_button(window, run, kind), label, font_size=20)
+        if kind == "defeat":
+            restart, menu = defeat_buttons(window, run)
+            draw_button(screen, restart, "Restart Run", font_size=20)
+            draw_button(screen, menu, "Main Menu", font_size=20)
+        else:
+            draw_button(screen, _banner_button(window, run, kind), "Continue", font_size=20)
+
+
+def fell_at(run: RunState) -> str:
+    """Where the run ended, e.g. 'Fell at Stage 12 of 30'."""
+    return f"Fell at Stage {run.level} of {MAX_LEVEL}"
 
 
 def _reward_lines(run: RunState) -> list[str]:
@@ -142,7 +170,7 @@ def _army_counts(run: RunState) -> dict[str, int]:
 
 
 def _banner_panel(window: tuple[int, int], run: RunState, kind: str, enter: float) -> pygame.Rect:
-    lines = 2 if kind == "defeat" else len(_reward_lines(run))
+    lines = 3 if kind == "defeat" else len(_reward_lines(run))  # defeat: lost line, stage line, room above buttons
     height = 150 + lines * 28
     width = min(520, window[0] - 80)
     settled_y = (window[1] - height) // 2 - 10

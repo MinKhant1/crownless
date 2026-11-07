@@ -3,6 +3,7 @@ import unittest
 from config.settings import (
     BATTLE_START_TIME,
     ENEMY_FORMATIONS,
+    MAX_LEVEL,
     STARTING_GOLD,
     VICTORY_BANNER_TIME,
     VICTORY_GOLD,
@@ -38,12 +39,13 @@ class CampaignTests(unittest.TestCase):
         expected = {
             1: {"pawn": 3, "knight": 1},
             2: {"pawn": 3, "bishop": 1, "knight": 1},
-            3: {"pawn": 2, "bishop": 1, "knight": 1, "rook": 1},
+            3: {"pawn": 3, "bishop": 1, "knight": 1, "rook": 1},
             4: {"pawn": 3, "bishop": 1, "knight": 1, "rook": 1},
-            5: {"king": 1, "pawn": 2, "knight": 1, "bishop": 1, "rook": 1},
+            5: {"queen": 1, "pawn": 2, "knight": 1, "bishop": 1, "rook": 1},
         }
-        for level in range(1, 6):
-            self.assertEqual(formation_counts(level), expected[level])
+        for level in range(1, MAX_LEVEL + 1):
+            if level in expected:
+                self.assertEqual(formation_counts(level), expected[level])
             seen = []
             for _kind, square in ENEMY_FORMATIONS[level]:
                 col, row = parse_square(square)
@@ -59,7 +61,7 @@ class CampaignTests(unittest.TestCase):
 
     def test_levels_advance_one_at_a_time_and_pay_once(self):
         run = RunState.new(seed=21)
-        for level in range(1, 6):
+        for level in range(1, MAX_LEVEL + 1):
             self.assertEqual(run.level, level)
             self.assertEqual(run.phase, "preview")
             before = run.gold
@@ -68,7 +70,7 @@ class CampaignTests(unittest.TestCase):
             self.assertEqual(run.gold, before + VICTORY_GOLD)
             run.finish_victory()
             self.assertEqual(run.gold, before + VICTORY_GOLD)
-            if level < 5:
+            if level < MAX_LEVEL:
                 run.continue_from_victory()
                 self.assertEqual(run.phase, "shop")
                 run.continue_from_victory()
@@ -81,10 +83,10 @@ class CampaignTests(unittest.TestCase):
             else:
                 run.continue_from_victory()
                 self.assertEqual(run.phase, "complete")
-                self.assertEqual(run.level, 5)
+                self.assertEqual(run.level, MAX_LEVEL)
                 run.continue_from_victory()
                 self.assertEqual(run.phase, "complete")
-                self.assertEqual(run.gold, STARTING_GOLD + VICTORY_GOLD * 5)
+                self.assertEqual(run.gold, STARTING_GOLD + VICTORY_GOLD * MAX_LEVEL)
 
     def test_shop_purchases_survive_the_next_level(self):
         run = RunState.new(seed=6)
@@ -201,9 +203,9 @@ class CampaignTests(unittest.TestCase):
         scene.update(0.02)
         self.assertTrue(scene.result_ready())
 
-    def test_level_five_fades_to_the_run_complete_screen(self):
+    def test_the_last_level_fades_to_the_run_complete_screen(self):
         run = RunState.new(seed=15)
-        run.level = 5
+        run.level = MAX_LEVEL
         run.phase = "victory"
         scene = SceneManager()
         self.assertTrue(scene.begin(run, run.continue_from_victory, "fade", 0.7))

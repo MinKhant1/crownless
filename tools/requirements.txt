@@ -1,0 +1,4 @@
+# Developer tools only (not needed to play): audio generation, trailer rendering, packaging.
+numpy
+imageio-ffmpeg
+pyinstaller

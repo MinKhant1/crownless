@@ -14,6 +14,7 @@ class RelicDef:
     parameters: dict = field(default_factory=dict)
     rarity: str = "common"
     in_shop: bool = True
+    stackable: bool = True  # can be owned more than once; each copy adds its effect again
 
 
 RELICS: tuple[RelicDef, ...] = (
@@ -44,6 +45,7 @@ RELICS: tuple[RelicDef, ...] = (
         description="When an Explosive piece dies, adjacent Explosive pieces also explode.",
         effect_id="chain_fuse",
         trigger="on_death",
+        stackable=False,  # a second fuse has nothing more to light
     ),
     RelicDef(
         id="collectors_crown",
