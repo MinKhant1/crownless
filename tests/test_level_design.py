@@ -137,8 +137,8 @@ class EnemyTraitTests(unittest.TestCase):
         self.assertFalse(any(piece.kind == "rook" and piece.color == "white" for piece in board.pieces))
 
 
-class UniqueRelicTests(unittest.TestCase):
-    def test_shop_sells_out_when_all_relics_are_owned(self):
+class StackingRelicTests(unittest.TestCase):
+    def test_shop_keeps_stackable_relics_when_all_relics_are_owned(self):
         run = RunState.new(seed=4)
         for relic_id in run.shop.catalog:
             if relic_id != "chain_fuse":
@@ -148,21 +148,22 @@ class UniqueRelicTests(unittest.TestCase):
         for _ in range(60):
             run.shop.roll(run.relics.unavailable_ids())
             seen.add(run.shop.relic_id)
-        self.assertEqual(seen, {None})
-        self.assertTrue(run.shop.relic_sold)
-        self.assertFalse(run.shop.relic_enabled)
+        self.assertNotIn(None, seen)
+        self.assertTrue(seen.isdisjoint(run.relics.unavailable_ids()))
+        self.assertFalse(run.shop.relic_sold)
+        self.assertTrue(run.shop.relic_enabled)
 
-    def test_buying_a_relic_you_own_is_rejected_without_charging(self):
+    def test_buying_a_relic_you_own_adds_a_copy(self):
         run = RunState.new(seed=4)
         run.relics.acquire("squire")
         run.gold = 20
         run.shop.relic_id = "squire"
         run.shop.relic_sold = False
-        self.assertEqual(run.buy_relic(), "Already owned")
-        self.assertEqual(run.gold, 20)
-        self.assertEqual(run.relics.count("squire"), 1)
+        self.assertIsNone(run.buy_relic())
+        self.assertEqual(run.gold, 13)
+        self.assertEqual(run.relics.count("squire"), 2)
 
-    def test_duplicate_recruitment_does_not_recruit_twice(self):
+    def test_duplicate_recruitment_recruits_twice(self):
         run = RunState.new(seed=6)
         run.relics.acquire("recruitment")
         run.relics.acquire("recruitment")
@@ -179,9 +180,9 @@ class UniqueRelicTests(unittest.TestCase):
         run.battle.click(2, 2)
         run.battle.click(3, 4)
         recruits = [piece for piece in board.pieces if piece.color == "white" and piece.kind == "pawn"]
-        self.assertEqual(len(recruits), 1)
+        self.assertEqual(len(recruits), 2)
 
-    def test_duplicate_squire_does_not_spawn_extra_pawns(self):
+    def test_duplicate_squire_spawns_extra_pawns(self):
         run = RunState.new(seed=6)
         run.relics.acquire("squire")
         run.relics.acquire("squire")
@@ -192,10 +193,10 @@ class UniqueRelicTests(unittest.TestCase):
         run.battle.click(2, 2)
         run.battle.click(3, 4)
         pawns = {(piece.col, piece.row) for piece in run.battle.game.board.pieces if piece.color == "white" and piece.kind == "pawn"}
-        self.assertEqual(len(pawns), 1)
+        self.assertEqual(len(pawns), 2)
         self.assertIn((3, 3), pawns)
 
-    def test_duplicate_blessing_does_not_bless_extra_pieces(self):
+    def test_duplicate_blessing_blesses_extra_pieces(self):
         run = RunState.new(seed=6)
         run.relics.acquire("crowns_blessing")
         run.relics.acquire("crowns_blessing")
@@ -205,7 +206,7 @@ class UniqueRelicTests(unittest.TestCase):
         run.enemies = [Piece(10001, "king", "black", 5, 6)]
         self.assertTrue(run.start_battle())
         blessed = [piece for piece in run.battle.game.board.pieces if piece.color == "white" and piece.trait]
-        self.assertEqual({(piece.col, piece.row) for piece in blessed}, {(2, 2)})
+        self.assertEqual({(piece.col, piece.row) for piece in blessed}, {(2, 2), (1, 2)})
 
     def test_castle_wall_copies_shield_deeper_down_the_file(self):
         run = RunState.new(seed=6)
@@ -224,7 +225,7 @@ class UniqueRelicTests(unittest.TestCase):
         self.assertEqual(protected_squares(board, 2) - {(0, 1)}, {(1, 2), (1, 1)})
         self.assertIsNotNone(rook)
 
-    def test_spent_blood_contract_cannot_be_acquired_again(self):
+    def test_blood_contract_copies_have_independent_uses(self):
         from rendering.relic_bar_renderer import card_state
 
         run = RunState.new(seed=12)
@@ -233,11 +234,11 @@ class UniqueRelicTests(unittest.TestCase):
         victim = next(p for p in run.army.pieces if p.kind == "pawn")
         self.assertTrue(run.relics.activate(first.instance_id, victim.id).ok)
         self.assertEqual(card_state(run, first), "used")
-        self.assertIsNone(second)
-        self.assertIsNone(run.relics.acquire("blood_contract"))
-        self.assertEqual(run.relics.count("blood_contract"), 1)
+        self.assertEqual(card_state(run, second), "active")
+        self.assertIsNotNone(run.relics.acquire("blood_contract"))
+        self.assertEqual(run.relics.count("blood_contract"), 3)
 
-    def test_duplicate_gold_relic_does_not_pay_twice(self):
+    def test_duplicate_gold_relic_pays_twice(self):
         run = RunState.new(seed=11)
         run.relics.acquire("flawless_victory")
         run.relics.acquire("flawless_victory")
@@ -247,9 +248,9 @@ class UniqueRelicTests(unittest.TestCase):
         run.battle.evaluate()
         gold = run.gold
         run.finish_victory()
-        self.assertEqual(run.gold, gold + VICTORY_GOLD + 3)
+        self.assertEqual(run.gold, gold + VICTORY_GOLD + 6)
         row = next(row for row in run.battle_summary.rows if "Flawless" in row.label)
-        self.assertEqual((row.label, row.amount), ("Relic: Flawless Victory", 3))
+        self.assertEqual((row.label, row.amount), ("Relic: Flawless Victory x2", 6))
 
 
 if __name__ == "__main__":

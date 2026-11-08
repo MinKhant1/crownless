@@ -14,7 +14,7 @@ class RelicDef:
     parameters: dict = field(default_factory=dict)
     rarity: str = "common"
     in_shop: bool = True
-    stackable: bool = False  # each relic can be owned only once per run
+    stackable: bool = True
 
 
 RELICS: tuple[RelicDef, ...] = (

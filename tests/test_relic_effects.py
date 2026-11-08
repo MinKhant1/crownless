@@ -194,9 +194,9 @@ class RelicEffectTests(unittest.TestCase):
         before = run.army.capacity
         self.assertIsNotNone(run.relics.acquire("banner"))
         self.assertEqual(run.army.capacity, before + 1)
-        self.assertIsNone(run.relics.acquire("banner"))
-        self.assertEqual(run.army.capacity, before + 1)
-        self.assertEqual(run.relics.count("banner"), 1)
+        self.assertIsNotNone(run.relics.acquire("banner"))
+        self.assertEqual(run.army.capacity, before + 2)
+        self.assertEqual(run.relics.count("banner"), 2)
 
     def test_graveyard_restores_the_first_special_piece_as_normal(self):
         run = RunState.new(seed=18)

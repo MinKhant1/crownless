@@ -17,7 +17,7 @@ def place(run: RunState, piece: Piece, col: int, row: int) -> None:
 
 
 class RelicTests(unittest.TestCase):
-    def test_acquisition_and_duplicate_prevention(self):
+    def test_acquisition_and_stackability(self):
         run = RunState.new(seed=1)
         owned = run.relics.acquire("recruitment")
         self.assertIsNotNone(owned)
@@ -25,12 +25,14 @@ class RelicTests(unittest.TestCase):
         self.assertEqual(owned.instance_id, "relic_001")
         self.assertEqual(owned.acquisition_order, 1)
         second = run.relics.acquire("recruitment")
-        self.assertIsNone(second)
-        self.assertEqual(run.relics.count("recruitment"), 1)
+        self.assertIsNotNone(second)
+        self.assertNotEqual(owned.instance_id, second.instance_id)
+        self.assertIsNot(owned.state, second.state)
+        self.assertEqual(run.relics.count("recruitment"), 2)
         self.assertIsNotNone(run.relics.acquire("chain_fuse"))
         self.assertIsNone(run.relics.acquire("chain_fuse"))
-        self.assertEqual(len(run.relics.owned), 2)
-        self.assertEqual(run.relics.unavailable_ids(), {"recruitment", "chain_fuse"})
+        self.assertEqual(len(run.relics.owned), 3)
+        self.assertEqual(run.relics.unavailable_ids(), {"chain_fuse"})
 
     def test_capture_effect_registers_once(self):
         run = RunState.new(seed=2)
@@ -326,7 +328,7 @@ class RelicTests(unittest.TestCase):
         self.assertTrue(run.start_battle())
         self.assertFalse(owned.state["used_this_battle"])
 
-    def test_shop_purchase_and_reroll_exclude_owned_relics(self):
+    def test_shop_purchase_and_reroll_respect_stackability(self):
         run = RunState.new(seed=16)
         run.gold = 7
         offered = run.shop.relic_id
@@ -340,8 +342,7 @@ class RelicTests(unittest.TestCase):
         run.gold = 9
         self.assertIsNone(run.reroll_shop())
         self.assertEqual(run.gold, 7)
-        self.assertNotEqual(run.shop.relic_id, offered)
-        self.assertFalse(run.relics.owns(run.shop.relic_id))
+        self.assertNotIn(run.shop.relic_id, run.relics.unavailable_ids())
         charm = run.relics.acquire("gold_charm")
         self.assertIsNotNone(charm)
         run.gold = 4
