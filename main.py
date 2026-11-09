@@ -69,10 +69,19 @@ def _board_phase(run: RunState) -> bool:
     return run.phase in ("preview", "deployment", "battle", "victory", "defeat")
 
 
+def _set_window_icon() -> None:
+    # replaces pygame's default icon in the title bar, taskbar and macOS dock
+    try:
+        pygame.display.set_icon(pygame.image.load(ROOT / "assets" / "icon" / "crownless.png"))
+    except (pygame.error, FileNotFoundError):
+        pass
+
+
 def main() -> None:
     pygame.display.init()
     pygame.font.init()
     pygame.display.set_caption("Crownless")
+    _set_window_icon()
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
     clock = pygame.time.Clock()
     assets = AssetManager(ROOT / "assets")
